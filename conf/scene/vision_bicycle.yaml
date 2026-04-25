@@ -1,0 +1,9 @@
+defaults:
+  - hot_pixel: SwissSPAD_continuous_stream # inpainting mask
+
+name: 0505-bicycle-2
+file: ${hydra:runtime.cwd}/data/sequences/vision/${scene.name}/binary.npy
+
+initial_time_step: 13_312
+#initial_time_step: 14_592
+num_time_step: 4000

@@ -1,0 +1,9 @@
+defaults:
+- hot_pixel: gray_spaddy_continuous_stream
+
+name: slingshot_13th_Nov_2023-11-13--14-44-55
+file: ${hydra:runtime.cwd}/data/sequences/photoev/${scene.name}/binary.npy
+crop_sensor: true
+initial_time_step: 67000
+num_time_step: 4000
+rotate_180: true

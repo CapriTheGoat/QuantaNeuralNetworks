@@ -1,0 +1,13 @@
+name: depth_anything_v2
+parallel_mode: true # use if available
+freeze_depth_head: false
+kwargs:
+  encoder: vits
+  state_dim: 12
+  features: 64
+  subsampling: 256
+  image_size: 448
+ckpt:
+  folder: ${hydra:runtime.cwd}/data/ckpt/depth_anything_v2
+  epoch_interval: 1
+  resume: true

@@ -1,0 +1,8 @@
+defaults:
+  - hot_pixel: SwissSPAD_continuous_stream # inpainting mask
+
+name: 0905-jump-sizhuo-l0
+file: ${hydra:runtime.cwd}/data/sequences/vision/${scene.name}/binary.npy
+
+initial_time_step: 0
+num_time_step: 4000

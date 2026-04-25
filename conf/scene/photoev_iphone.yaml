@@ -1,0 +1,9 @@
+defaults:
+- hot_pixel: new_graySPAD_continuous_stream
+
+name: iphone_screen_20_per
+file: ${hydra:runtime.cwd}/data/sequences/photoev/${scene.name}/binary.npy
+crop_sensor: true
+initial_time_step: 0
+num_time_step: 4000
+flip_ud: true

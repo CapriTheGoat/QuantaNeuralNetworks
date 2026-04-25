@@ -1,0 +1,18 @@
+name: pips
+pips_ckpt: ${hydra:runtime.cwd}/data/ckpt/pips.pth
+parallel_mode: true
+kwargs:
+  state_dim: 12
+  subsampling: 256
+  corr_level: 4
+  corr_radius: 3
+  num_delta_block: 8
+  latent_dim: 128
+  spatial_stride: 4
+  delta_kernel_size: 3
+  delta_hidden_dim: 256
+  num_pips_iter: 6
+ckpt:
+  folder:  ${hydra:runtime.cwd}/data/ckpt/${model.name}/
+  epoch_interval: 1
+  resume: true

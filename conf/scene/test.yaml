@@ -1,0 +1,6 @@
+name: TEST01_003_f0433
+file: /nobackup2/vsundar4/segment_anything_xvfi/test_16x_photons_512_512/${scene.name}.npy
+
+# photon cube duration
+initial_time_step: 0
+num_time_step: 2048

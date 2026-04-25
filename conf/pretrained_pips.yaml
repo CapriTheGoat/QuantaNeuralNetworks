@@ -1,0 +1,12 @@
+pips:
+  name: pips
+  kwargs:
+    corr_level: 4
+    corr_radius: 3
+    num_delta_block: 8
+    latent_dim: 128
+    spatial_stride: 4
+    delta_kernel_size: 3
+    delta_hidden_dim: 256
+    num_pips_iter: 6
+  ckpt: ${hydra:runtime.cwd}/data/ckpt/pips.pth

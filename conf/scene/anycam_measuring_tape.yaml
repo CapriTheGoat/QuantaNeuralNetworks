@@ -1,0 +1,9 @@
+defaults:
+  - hot_pixel: SwissSPAD_ddr3_mode # inpainting mask
+
+name: measuring_tape_17th_Dec_2022
+file: ${hydra:runtime.cwd}/data/sequences/anycam/${scene.name}/binary.npy
+
+# photon cube duration
+initial_time_step: 6400
+num_time_step: 1280

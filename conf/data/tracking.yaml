@@ -1,0 +1,38 @@
+  train:
+    dataset_location: ${data.dataset_location}
+    split: train
+    use_half_gt: ${data.use_half_gt}
+    max_points: ${data.max_points}
+    intensity_fps: ${data.intensity_fps}
+    photon_cube_fps: ${data.photon_cube_fps}
+    trajectory_fps: ${data.trajectory_fps}
+    max_time_step: ${data.max_time_step}
+  val:
+    dataset_location: ${data.dataset_location}
+    split: val
+    use_half_gt: ${data.use_half_gt}
+    max_points: ${data.max_points}
+    intensity_fps: ${data.intensity_fps}
+    photon_cube_fps: ${data.photon_cube_fps}
+    trajectory_fps: ${data.trajectory_fps}
+    max_time_step: ${data.max_time_step}
+  test:
+    dataset_location: ${data.dataset_location}
+    split: val
+    use_half_gt: ${data.use_half_gt}
+    max_points: 512
+    intensity_fps: ${data.intensity_fps}
+    photon_cube_fps: ${data.photon_cube_fps}
+    trajectory_fps: 1_000
+    max_time_step: ${data.max_time_step}
+    mix_random_points: false
+    data_augment: false
+  dataset_location: /nobackup2/vsundar4/tracking_dataset
+  num_workers: 4
+  batch_size: 1
+  max_points: 64
+  intensity_fps: 16_000
+  photon_cube_fps: 64_000
+  trajectory_fps: 1_000
+  max_time_step: 4096 # 7680
+  use_half_gt: true

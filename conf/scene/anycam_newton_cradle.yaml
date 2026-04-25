@@ -1,0 +1,8 @@
+defaults:
+  - hot_pixel: SwissSPAD_ddr3_mode # inpainting mask
+
+name: newton_cradle_8th_Feb_2023
+file: ${hydra:runtime.cwd}/data/sequences/anycam/${scene.name}/take_2/binary.npy
+
+initial_time_step: 30_720
+num_time_step: 5000

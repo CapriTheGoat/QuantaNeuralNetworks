@@ -1,0 +1,13 @@
+name: efficient_ssd
+parallel_mode: true # use if available
+kwargs:
+  channels: 64
+  state_dim: 12
+  group_num: 4
+  subsampling: 64
+  memory_size: 20
+  bocpd_gamma: 8e-4
+ckpt:
+  folder:  ${hydra:runtime.cwd}/data/ckpt/${model.name}/
+  epoch_interval: 1
+  resume: true

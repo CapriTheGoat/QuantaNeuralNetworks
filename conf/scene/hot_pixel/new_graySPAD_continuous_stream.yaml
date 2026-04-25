@@ -1,0 +1,2 @@
+file_name: new_graySPAD_continuous_stream.npy
+mask_path: ${hydra:runtime.cwd}/data/hot_pixel_mask/${scene.hot_pixel.file_name}

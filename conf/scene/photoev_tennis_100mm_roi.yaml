@@ -1,0 +1,4 @@
+name: tennis_100mm_27th_Sept_2023-09-27--17-39-05_roi
+file: ${hydra:runtime.cwd}/data/tennis_100mm_roi.npy
+initial_time_step: 0
+num_time_step: 2500

@@ -1,0 +1,33 @@
+defaults:
+  - hydra
+  - method_params
+  - viz
+  - scene: anycam_casino_roulette
+  - model: pips
+  - model@recons_model: efficient_ssd
+  - override hydra/job_logging: none
+  - _self_
+
+exp_name: dashboard
+device: cuda
+spad_frame_rate: 96.8e3
+
+data:
+  root: /nobackup2/vsundar4/tracking_dataset/
+
+viz:
+  points_per_side:
+    input_type: number_input
+    input_kwargs:
+      min_value: 1
+      max_value: 1_000
+      value: 24
+      help: Points per side, sampled uniformly
+  displacement_suppression_threshold:
+    input_type: number_input
+    input_kwargs:
+      min_value: 0.0
+      max_value: 100.0
+      value: 2.0
+      help: Pixel displacements to suppress
+

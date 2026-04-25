@@ -1,0 +1,25 @@
+name: xvfi
+train:
+  intensity_location: ${data.folder}/train_16x_256_256
+  crop_size: [128, 128]
+  intensity_fps: ${data.intensity_fps}
+  photon_cube_fps: ${data.photon_cube_fps}
+  max_time_step: ${data.max_time_step}
+val:
+  intensity_location: ${data.folder}/test_16x_256_512
+  intensity_fps: ${data.intensity_fps}
+  photon_cube_fps: ${data.photon_cube_fps}
+  max_time_step: ${data.max_time_step}
+test:
+  intensity_location: ${data.folder}/test_16x_256_512
+  intensity_fps: ${data.intensity_fps}
+  photon_cube_fps: ${data.photon_cube_fps}
+  max_time_step: 2048
+folder: /nobackup2/vsundar4/xvfi/
+dataset_location: ${data.folder}
+num_workers: 8
+batch_size: 1
+intensity_fps: 16_000
+photon_cube_fps: 64_000
+max_time_step: 2048
+use_half_gt: true

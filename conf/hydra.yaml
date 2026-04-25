@@ -1,0 +1,23 @@
+# Hydra configs
+hydra:
+  run:
+    dir: ./outputs/${exp_name}/${hydra.job.override_dirname}
+  sweep:
+    dir: ./outputs/${exp_name}/
+    subdir: ${hydra.job.override_dirname}
+  job:
+    chdir: True
+    config:
+      override_dirname:
+        exclude_keys:
+          - exp_name
+          - scene
+          - scene.name
+          - scene.num_time_step
+          - scene.initial_time_step
+          - scene.final_time_step
+          - scene.temporal_stride
+          - show
+  job_logging:
+      file:
+        mode: w # comment if you don't want to overwrite

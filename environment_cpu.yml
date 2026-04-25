@@ -1,0 +1,13 @@
+name: qnn
+channels:
+  - pytorch
+  - defaults
+  - conda-forge
+dependencies:
+  - ffmpeg
+  - pip
+  - python=3.10
+  - pytorch
+  - torchvision
+  - pip:
+    - -r requirements.txt

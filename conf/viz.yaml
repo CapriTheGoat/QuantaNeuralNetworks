@@ -1,0 +1,34 @@
+viz:
+  output_fps:
+    input_type: number_input
+    input_kwargs:
+      min_value: 1
+      max_value: 1_000
+      value: 10
+      help: Video fps
+  device:
+    input_type: selectbox
+    input_kwargs:
+      options:
+        - cuda
+        - cpu
+      index: 0
+      help: Accelerator to use.
+  short_exposure_frames:
+    input_type: number_input
+    input_kwargs:
+      min_value: 1
+      value: 16
+      max_value: 2048
+      help: Number of frames averaged for a short exposure
+  quantile:
+    input_type: number_input
+    input_kwargs:
+      min_value: 0.0
+      value: 1.0
+      max_value: 1.0
+  invert_SPAD_response:
+    input_type: checkbox
+    input_kwargs:
+      value: False
+      help: Invert $1- e^{-x}$, clamp at the 97.5th percentile, and normalize. Good for low-light scenes.

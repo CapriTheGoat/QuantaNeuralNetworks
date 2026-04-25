@@ -1,0 +1,8 @@
+defaults:
+  - hot_pixel: SwissSPAD_ddr3_mode # inpainting mask
+
+name: 0117-taj-f5p6-tworows-100khz-4
+file: ${hydra:runtime.cwd}/data/sequences/qbp/${scene.name}/binary.npy
+
+initial_time_step: 28_750
+num_time_step: 1_000

@@ -1,0 +1,9 @@
+defaults:
+  - hot_pixel: SwissSPAD_ddr3_mode # inpainting mask
+
+name: balloon_burst_17th_Dec_2022
+file: ${hydra:runtime.cwd}/data/sequences/anycam/${scene.name}/take_2/binary.npy
+
+# photon cube duration
+initial_time_step: 86984
+num_time_step: 512

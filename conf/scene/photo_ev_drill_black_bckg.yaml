@@ -1,0 +1,10 @@
+defaults:
+- hot_pixel: new_graySPAD_continuous_stream
+
+name: drill_take_3_1st_Sept
+file: ${hydra:runtime.cwd}/data/sequences/photoev/${scene.name}/binary.npy
+crop_sensor: true
+initial_time_step: 67840
+num_time_step: 3000
+flip_ud: false
+rotate_180: true

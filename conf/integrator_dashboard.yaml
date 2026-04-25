@@ -1,0 +1,70 @@
+defaults:
+  - hydra
+  - scene: anycam_casino_roulette
+  - override hydra/job_logging: none
+  - _self_
+
+exp_name: dashboard
+device: cuda
+
+method_params:
+  bocpd_gamma:
+    input_type: number_input
+    input_kwargs:
+      min_value: 0.000
+      value: 1e-4
+      max_value: 1.000
+      format: "%e"
+      help: Exponential smoothing of forecaster weights. Smaller implies smoother.
+      step: 1e-8
+  memory_size:
+    input_type: number_input
+    input_kwargs:
+      min_value: 1
+      value: 20
+      max_value: 1000
+      help: Number of forecasters.
+      step: 1
+  min_filter_size:
+    input_type: number_input
+    input_kwargs:
+      min_value: 1
+      value: 5
+      max_value: 128
+      help: Patch-size of patch-based adaptive integrator. Must be an odd integer.
+      step: 2
+  subsampling:
+    input_type: number_input
+    input_kwargs:
+      min_value: 1
+      max_value: 100
+      value: 64
+      help: HiPPO layer subsampling
+
+
+viz:
+  output_fps:
+    input_type: number_input
+    input_kwargs:
+      min_value: 1
+      max_value: 1_000
+      value: 30
+      help: Video fps
+  invert_SPAD_response:
+    input_type: checkbox
+    input_kwargs:
+      value: False
+      help: Invert $1- e^{-x}$, clamp at the 97.5th percentile, and normalize. Good for low-light scenes.
+  quantile:
+    input_type: number_input
+    input_kwargs:
+      min_value: 0.0
+      value: 1.0
+      max_value: 1.0
+  short_exposure_frames:
+    input_type: number_input
+    input_kwargs:
+      min_value: 1
+      value: 32
+      max_value: 2048
+      help: Number of frames averaged for a short exposure

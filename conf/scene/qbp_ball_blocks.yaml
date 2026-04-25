@@ -1,0 +1,8 @@
+defaults:
+  - hot_pixel: SwissSPAD_ddr3_mode # inpainting mask
+
+name: 0115-ball-blocks-f4-tworow
+file: ${hydra:runtime.cwd}/data/sequences/qbp/${scene.name}/binary.npy
+
+initial_time_step: 59_500
+num_time_step: 1_000

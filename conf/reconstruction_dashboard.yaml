@@ -1,0 +1,12 @@
+defaults:
+  - hydra
+  - method_params
+  - viz
+  - scene: anycam_casino_roulette
+  - model: efficient_ssd
+  - override hydra/job_logging: none
+  - _self_
+
+exp_name: dashboard
+device: cuda
+spad_frame_rate: 96.8e3

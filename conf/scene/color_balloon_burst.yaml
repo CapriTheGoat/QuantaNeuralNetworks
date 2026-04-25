@@ -1,0 +1,13 @@
+defaults:
+  - hot_pixel: colorSPAD_continuous_stream # inpainting mask
+
+name: balloon_burst_April_27th
+file: ${hydra:runtime.cwd}/data/sequences/color/${scene.name}/static/binary.npy
+
+# photon cube duration
+initial_time_step: 98_900
+num_time_step: 1000
+
+rotate_180: True
+colorSPAD_col_correct: True
+colorSPAD_RGBW_CFA: ${hydra:runtime.cwd}/data/color_filter_array/rgbw_oh_bn_color_ss2_padded.tif

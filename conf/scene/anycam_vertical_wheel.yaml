@@ -1,0 +1,9 @@
+defaults:
+  - hot_pixel: SwissSPAD_ddr3_mode # inpainting mask
+
+name: vertical_wheel_17th_Dec_2022
+file: ${hydra:runtime.cwd}/data/sequences/anycam/${scene.name}/button_click/binary.npy
+
+# photon cube duration
+initial_time_step: 38_400
+num_time_step: 2000

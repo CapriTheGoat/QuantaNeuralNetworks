@@ -1,0 +1,8 @@
+defaults:
+  - hot_pixel: SwissSPAD_ddr3_mode # inpainting mask
+
+name: 0119-painting2-f11-20khz-1
+file: ${hydra:runtime.cwd}/data/sequences/qbp/${scene.name}/binary.npy
+
+initial_time_step: 83_750
+num_time_step: 1_000

@@ -1,0 +1,10 @@
+pdefaults:
+- hot_pixel: new_graySPAD_continuous_stream
+
+name: dslr_shutter
+file: ${hydra:runtime.cwd}/data/sequences/photoev/${scene.name}/binary.npy
+crop_sensor: true
+initial_time_step: 30000
+num_time_step: 4000
+flip_ud: false
+rotate_180: true

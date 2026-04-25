@@ -1,0 +1,10 @@
+defaults:
+- hot_pixel: new_graySPAD_continuous_stream
+
+name: slingshot_1st_Sept
+file: ${hydra:runtime.cwd}/data/sequences/photoev/${scene.name}/binary.npy
+crop_sensor: true
+initial_time_step: 99000
+num_time_step: 6000
+flip_ud: false
+rotate_180: true

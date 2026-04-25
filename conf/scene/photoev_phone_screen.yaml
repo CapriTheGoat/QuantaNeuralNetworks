@@ -1,0 +1,10 @@
+defaults:
+- hot_pixel: new_graySPAD_continuous_stream
+
+name: phone_screen
+file: ${hydra:runtime.cwd}/data/sequences/photoev/${scene.name}/binary.npy
+crop_sensor: true
+initial_time_step: 0
+num_time_step: 4000
+flip_ud: true
+rotate_180: false

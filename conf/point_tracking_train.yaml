@@ -1,0 +1,42 @@
+defaults:
+  - hydra
+  - data: tracking
+  - model: pips
+  - override hydra/job_logging: none
+  - _self_
+
+exp_name: training_run/${model.name}
+num_epoch: 10
+gradient_accumulation_steps: 4
+git_sha: ???
+
+loss:
+  sequence_loss:
+    gamma: 0.8 # exponential weights to iterative updates
+    bce_weight: 0.5
+
+logging:
+  tensorboard_dir: ${data.dataset_location}/${model.name}/tensorboard
+  scalar_interval: 5
+  image_interval: 20
+  num_images: 8
+  max_viz_points: 8
+
+photon_cube:
+  min_probability: 0.1
+  max_probability: 1.0
+
+bocpd_gamma:
+  min: 8e-5
+  max: 1e-3
+
+optim:
+  lr: 1e-5
+  betas: [0.9, 0.99]
+
+# lr scheduler (cosine annealing)
+scheduler:
+    eta_min: 1e-8
+
+hydra:
+  output_subdir: null

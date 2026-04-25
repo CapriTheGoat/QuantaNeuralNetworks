@@ -1,0 +1,8 @@
+defaults:
+  - hot_pixel: SwissSPAD_continuous_stream # inpainting mask
+
+name: 0905-walk-sizhuo-l2
+file: ${hydra:runtime.cwd}/data/sequences/vision/${scene.name}/binary.npy
+
+initial_time_step: 60_416
+num_time_step: 4096

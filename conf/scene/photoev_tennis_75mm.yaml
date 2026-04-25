@@ -1,0 +1,12 @@
+defaults:
+- hot_pixel: colorSPAD_continuous_stream
+
+name: tennis_27th_Sept_75mm_2023-09-27--17-12-32
+file: ${hydra:runtime.cwd}/data/sequences/photoev/${scene.name}/binary.npy
+
+initial_time_step: 31_488
+num_time_step: 8000
+flip_ud: false
+rotate_180: true
+colorSPAD_col_correct: True
+colorSPAD_RGBW_CFA: ${hydra:runtime.cwd}/data/color_filter_array/rgbw_oh_bn_color_ss2_padded.tif

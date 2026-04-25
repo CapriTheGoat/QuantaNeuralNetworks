@@ -1,0 +1,19 @@
+name: i2k
+train:
+  intensity_location: ${data.folder}/train
+  intensity_fps: ${data.intensity_fps}
+  photon_cube_fps: ${data.photon_cube_fps}
+  max_time_step: ${data.max_time_step}
+test:
+  intensity_location: ${data.folder}/test
+  intensity_fps: ${data.intensity_fps}
+  photon_cube_fps: ${data.photon_cube_fps}
+  max_time_step: ${data.max_time_step}
+folder: /nobackup2/shared/i2-16kfps_v1_256_512/
+dataset_location: ${data.folder}
+num_workers: 0
+batch_size: 1
+intensity_fps: 16_000
+photon_cube_fps: 64_000
+max_time_step: 4096
+use_half_gt: true

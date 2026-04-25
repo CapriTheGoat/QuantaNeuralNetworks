@@ -1,0 +1,9 @@
+defaults:
+  - hot_pixel: SwissSPAD_ddr3_mode # inpainting mask
+
+name: jack-in-the-box_17th_Dec_2022
+file: ${hydra:runtime.cwd}/data/sequences/anycam/${scene.name}/take_2/binary.npy
+
+# photon cube duration
+initial_time_step: 79_872
+num_time_step: 4000

@@ -1,0 +1,8 @@
+defaults:
+  - hot_pixel: SwissSPAD_ddr3_mode # inpainting mask
+
+name: 0115-fence-f8-lamp-handheld-2
+file: ${hydra:runtime.cwd}/data/sequences/qbp/${scene.name}/binary.npy
+
+initial_time_step: 74_750
+num_time_step: 3_000

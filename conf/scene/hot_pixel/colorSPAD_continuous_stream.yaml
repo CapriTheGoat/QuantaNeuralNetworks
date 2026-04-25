@@ -1,0 +1,1 @@
+mask_path: ${hydra:runtime.cwd}/data/hot_pixel_mask/colorSPAD_continuous_stream.npy

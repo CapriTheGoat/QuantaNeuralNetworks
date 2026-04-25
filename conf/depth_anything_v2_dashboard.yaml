@@ -1,0 +1,28 @@
+defaults:
+  - hydra
+  - method_params
+  - viz
+  - pretrained_depth_anything
+  - scene: anycam_casino_roulette
+  - data: xvfi
+  - model: depth_anything_v2
+  - override hydra/job_logging: none
+  - _self_
+
+exp_name: dashboard
+device: cuda
+spad_frame_rate: 96.8e3
+
+method_params:
+  min_window:
+    input_type: number_input
+    input_kwargs:
+      min_value: 1
+      max_value: 10_000
+      value: 32
+      help: Smallest window to consider as the time constant. We logarithmically sweep between this and the time step.
+
+
+
+
+

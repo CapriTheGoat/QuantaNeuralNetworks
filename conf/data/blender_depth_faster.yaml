@@ -1,0 +1,36 @@
+name: blender_depth_faster
+
+train:
+  split: train
+  dataset_location: ${data.dataset_location}
+  intensity_oversampling: ${data.intensity_oversampling}
+  max_intensity_frames: ${data.max_intensity_frames}
+  max_depth_frames: ${data.max_depth_frames}
+  use_half_gt: ${data.use_half_gt}
+val:
+  split: val
+  dataset_location: ${data.dataset_location}
+  intensity_oversampling: ${data.intensity_oversampling}
+  max_intensity_frames: ${data.max_intensity_frames}
+  max_depth_frames: ${data.max_depth_frames}
+  use_half_gt: ${data.use_half_gt}
+test:
+  split: test
+  dataset_location: ${data.dataset_location}
+  intensity_oversampling: ${data.intensity_oversampling}
+  max_intensity_frames: 2048
+  max_depth_frames: ${data.max_depth_frames}
+  use_half_gt: false
+
+min_depth: 1e-3
+max_depth: 20
+
+intensity_oversampling: 4
+max_intensity_frames: 2048
+# interpolation factor is 32x
+max_depth_frames: 64
+dataset_location: /nobackup2/vsundar4/${data.name}
+root: ${data.dataset_location}
+num_workers: 2
+batch_size: 1
+use_half_gt: true

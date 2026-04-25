@@ -1,0 +1,6 @@
+depth_anything:
+  mean: [0.485, 0.456, 0.406]
+  std: [0.229, 0.224, 0.225]
+  kwargs:
+    image_size: 448
+  ckpt: ${hydra:runtime.cwd}/data/ckpt/depth_anything_v2_vits.pth

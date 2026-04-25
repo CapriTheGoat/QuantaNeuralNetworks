@@ -1,0 +1,12 @@
+defaults:
+  - hot_pixel: colorSPAD_continuous_stream # inpainting mask
+
+name: darts_April_26th
+file: ${hydra:runtime.cwd}/data/sequences/color/${scene.name}/static/binary.npy
+
+initial_time_step: 1000
+num_time_step: 1000
+
+rotate_180: True
+colorSPAD_col_correct: True
+colorSPAD_RGBW_CFA: ${hydra:runtime.cwd}/data/sequences/color/rgbw_oh_bn_color_ss2_padded.tif

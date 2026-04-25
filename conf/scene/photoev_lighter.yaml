@@ -1,0 +1,11 @@
+defaults:
+- hot_pixel: new_graySPAD_continuous_stream
+
+name: lighter_take_3_1st_Sept
+file: ${hydra:runtime.cwd}/data/sequences/photoev/${scene.name}/binary.npy
+crop_sensor: true
+initial_time_step: 36864 # use this for take-3
+#initial_time_step: 512
+num_time_step: 7000
+flip_ud: false
+rotate_180: true

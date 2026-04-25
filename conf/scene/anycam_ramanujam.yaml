@@ -1,0 +1,12 @@
+defaults:
+  - hot_pixel: colorSPAD_continuous_stream # inpainting mask
+
+name: ramanujam_24th_Feb_2023
+file: ${hydra:runtime.cwd}/data/sequences/anycam/${scene.name}/nerf/binary.npy
+
+# photon cube duration
+initial_time_step: 60_000
+num_time_step: 4000
+
+colorSPAD_col_correct: True
+colorSPAD_RGBW_CFA: ${hydra:runtime.cwd}/data/color_filter_array/rgbw_oh_bn_color_ss2_padded.tif

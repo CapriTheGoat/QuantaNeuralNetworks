@@ -1,0 +1,53 @@
+defaults:
+  - hydra
+  - pretrained_depth_anything
+  - data: blender_depth_faster
+  - model: depth_anything_v2
+  - override hydra/job_logging: none
+  - _self_
+
+exp_name: training_run/${model.name}
+num_epoch: 10
+gradient_accumulation_steps: 2
+git_sha: ???
+
+short_exposure_frames: 64
+
+loss:
+  mae_loss:
+    valid_mask: true
+    loss_weight: 1.0
+    affine_invariant: true
+  gradient_loss:
+    valid_mask: true
+    loss_weight: 1.2
+    affine_invariant: true
+
+logging:
+  tensorboard_dir: ${data.dataset_location}/${model.name}/tensorboard
+  scalar_interval: 5
+  image_interval: 20
+  num_images: 8
+
+min_window:
+  min: 12
+  max: 64
+
+bocpd_gamma:
+  min: 8e-5
+  max: 1e-3
+
+photon_cube:
+  min_probability: 0.4
+  max_probability: 1.0
+
+optim:
+  lr: 1e-5
+  betas: [0.9, 0.99]
+
+# lr scheduler (cosine annealing)
+scheduler:
+    eta_min: 1e-8
+
+hydra:
+  output_subdir: null

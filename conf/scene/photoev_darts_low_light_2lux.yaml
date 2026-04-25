@@ -1,0 +1,12 @@
+defaults:
+- hot_pixel: new_graySPAD_continuous_stream
+
+name: darts_26th_Sept_dark_2lux_2023-09-26--16-56-48
+file: ${hydra:runtime.cwd}/data/sequences/photoev/${scene.name}/binary.npy
+
+initial_time_step: 132_000
+num_time_step: 4000
+flip_ud: false
+rotate_180: true
+colorSPAD_col_correct: True
+colorSPAD_RGBW_CFA: ${hydra:runtime.cwd}/data/color_filter_array/rgbw_oh_bn_color_ss2_padded.tif
