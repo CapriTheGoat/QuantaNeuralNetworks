@@ -264,8 +264,83 @@ class IntensityCubeSimulated(Dataset):
             raise FileNotFoundError(f"Could not find matching target: {intensity_path}")
 
         return video_name, photon_cube, intensity_ll
+    
 
+#Added class to accept .npy files directly
+class IntensityCubeSimulatedNPY(Dataset):
+    def __init__(
+        self,
+        photon_cube_location: str | list[str],
+        intensity_location: str,
+        reshape_size: Tuple[int, int] = None,
+        crop_size: Tuple[int, int] = None,
+        intensity_fps: int = 100,
+        photon_cube_fps: int = 400,
+        max_time_step: int = 1,
+        oversampling: int = 1,
+    ):
+        self.oversampling = oversampling
+        self.intensity_location = Path(intensity_location)
+    
+        if isinstance(photon_cube_location, str):
+            photon_cube_location = [photon_cube_location]
+            
+        path_ll = []
+        for data_dir in photon_cube_location:
+            # Change 1: Look for the unpacked .npy files!
+            path_ll += list(Path(data_dir).rglob("*.npy"))
+        
+        if len(path_ll) == 0:
+            raise ValueError(f"No simulated .npy files found in {photon_cube_location}")
+        
+        self.path_ll = natsorted(path_ll)
+    
+    def __len__(self):
+        return len(self.path_ll)
+    
+    def __getitem__(self, index):
+        # 1. LOAD SIMULATED FRAMES (Now from .npy)
+        path = self.path_ll[index]
+        video_name = path.name
 
+        # Change 2: Load directly with NumPy
+        photon_cube_np = np.load(path)
+
+        # Safety Check: EfficientSSD requires [Height, Width, Time].
+        # If your pre-unpacked .npy files were saved as [Time, Height, Width] (e.g., [1000, 28, 28]),
+        # this will automatically flip them to [28, 28, 1000] for you.
+        if photon_cube_np.ndim == 3 and photon_cube_np.shape[0] != 28:
+            photon_cube_np = np.transpose(photon_cube_np, (1, 2, 0))
+        elif photon_cube_np.ndim == 2:
+            # Fallback just in case it's a single 2D frame
+            photon_cube_np = np.expand_dims(photon_cube_np, axis=-1)
+
+        photon_cube = torch.from_numpy(photon_cube_np).float()
+
+        if self.oversampling > 1:
+            photon_cube = repeat(
+                photon_cube,
+                "h w t -> h w (t num_repeat)",
+                num_repeat = self.oversampling,
+            )
+
+        # 2. LOAD LINEAR TARGET FRAMES
+        digit_folder = path.parent.name
+        npy_filename = path.stem + ".npy"
+
+        intensity_path = self.intensity_location / digit_folder / npy_filename
+
+        if intensity_path.exists():
+            intensity = np.load(intensity_path)
+            intensity_ll = torch.from_numpy(intensity).float()
+            
+            # Stretch the 2D image to match the exact 3D length of the photon cube!
+            final_time_steps = photon_cube.shape[2]
+            intensity_ll = intensity_ll.unsqueeze(-1).expand(-1, -1, final_time_steps)
+        else:
+            raise FileNotFoundError(f"Could not find matching target: {intensity_path}")
+
+        return video_name, photon_cube, intensity_ll
 
 class IntensityImage(Dataset):
     def __init__(
