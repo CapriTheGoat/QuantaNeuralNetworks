@@ -299,23 +299,25 @@ class IntensityCubeSimulatedNPY(Dataset):
         return len(self.path_ll)
     
     def __getitem__(self, index):
-        # 1. LOAD SIMULATED FRAMES (Now from .npy)
+        # 1. LOAD SIMULATED FRAMES
         path = self.path_ll[index]
         video_name = path.name
 
-        # Change 2: Load directly with NumPy
         photon_cube_np = np.load(path)
 
-        # Safety Check: EfficientSSD requires [Height, Width, Time].
-        # If your pre-unpacked .npy files were saved as [Time, Height, Width] (e.g., [1000, 28, 28]),
-        # this will automatically flip them to [28, 28, 1000] for you.
+        
         if photon_cube_np.ndim == 3 and photon_cube_np.shape[0] != 28:
             photon_cube_np = np.transpose(photon_cube_np, (1, 2, 0))
         elif photon_cube_np.ndim == 2:
             # Fallback just in case it's a single 2D frame
             photon_cube_np = np.expand_dims(photon_cube_np, axis=-1)
 
-        photon_cube = torch.from_numpy(photon_cube_np).float()
+        photon_cube = torch.from_numpy(photon_cube_np.copy()).float()
+
+        # 2. SANITIZE
+        if torch.isnan(photon_cube).any() or torch.isinf(photon_cube).any():
+            # If a file is bad, just return the next sample instead of crashing
+            return self.__getitem__((index + 1) % len(self))
 
         if self.oversampling > 1:
             photon_cube = repeat(
@@ -332,13 +334,15 @@ class IntensityCubeSimulatedNPY(Dataset):
 
         if intensity_path.exists():
             intensity = np.load(intensity_path)
-            intensity_ll = torch.from_numpy(intensity).float()
+            intensity_ll = torch.from_numpy(intensity.copy()).float()
+            intensity_ll = intensity_ll + 1e-8
             
-            # Stretch the 2D image to match the exact 3D length of the photon cube!
+            # Stretch the 2D image to match the exact 3D length of the photon cube
             final_time_steps = photon_cube.shape[2]
             intensity_ll = intensity_ll.unsqueeze(-1).expand(-1, -1, final_time_steps)
         else:
             raise FileNotFoundError(f"Could not find matching target: {intensity_path}")
+        
 
         return video_name, photon_cube, intensity_ll
 
