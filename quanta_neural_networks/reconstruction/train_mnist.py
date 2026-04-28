@@ -57,6 +57,8 @@ def main(cfg):
         shuffle=True,
         batch_size=1,
         num_workers=cfg.data.num_workers,
+        pin_memory=True,
+        prefetch_factor=2,
     )
     val_dataloader = DataLoader(
         val_dataset, shuffle=True, batch_size=1, num_workers=cfg.data.num_workers
