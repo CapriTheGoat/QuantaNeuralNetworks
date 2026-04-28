@@ -277,9 +277,9 @@ class IntensityCubeSimulatedNPY(Dataset):
         intensity_fps: int = 100,
         photon_cube_fps: int = 400,
         max_time_step: int = 1,
-        oversampling: int = 1,
+        oversampling: int = 10,
     ):
-        self.oversampling = oversampling
+        self.oversampling = 2048
         self.intensity_location = Path(intensity_location)
     
         if isinstance(photon_cube_location, str):

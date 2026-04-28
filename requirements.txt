@@ -1,6 +1,5 @@
 av
 black
-git+https://github.com/apple/ml-depth-pro.git
 einops
 einshape
 flow_vis

@@ -1,6 +1,9 @@
 """
 Training entrypoint for reconstruction models.
 """
+import os
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 from pathlib import Path
 
@@ -18,7 +21,7 @@ from tqdm import tqdm
 from quanta_neural_networks.ssd import SSD
 from quanta_neural_networks.ops.array_ops import loguniform
 from quanta_neural_networks.ops.metrics import PSNR
-from quanta_neural_networks.reconstruction.dataloader import IntensityCubeSimulated
+from quanta_neural_networks.reconstruction.dataloader import IntensityCubeSimulatedNPY
 from quanta_neural_networks.reconstruction.efficient_ssd import EfficientSSD
 from quanta_neural_networks.utils.hydra import print_and_save_cfg
 from quanta_neural_networks.utils.train_utils import (
@@ -45,8 +48,8 @@ def main(cfg):
 
     logger.info(f"Using device {device}")
 
-    train_dataset = IntensityCubeSimulated(**cfg.data.train)
-    val_dataset = IntensityCubeSimulated(**cfg.data.val)
+    train_dataset = IntensityCubeSimulatedNPY(**cfg.data.train)
+    val_dataset = IntensityCubeSimulatedNPY(**cfg.data.val)
 
     # Create dataloaders
     train_dataloader = DataLoader(
