@@ -304,12 +304,6 @@ class IntensityCubeSimulatedNPY(Dataset):
         video_name = path.name
 
         photon_cube_np = np.load(path)
-        photon_cube = torch.from_numpy(photon_cube_np.copy()).float()
-
-        # 2. SANITIZE
-        if torch.isnan(photon_cube).any() or torch.isinf(photon_cube).any():
-            # If a file is bad, just return the next sample instead of crashing
-            return self.__getitem__((index + 1) % len(self))
 
         
         if photon_cube_np.ndim == 3 and photon_cube_np.shape[0] != 28:
@@ -318,7 +312,12 @@ class IntensityCubeSimulatedNPY(Dataset):
             # Fallback just in case it's a single 2D frame
             photon_cube_np = np.expand_dims(photon_cube_np, axis=-1)
 
-        photon_cube = torch.from_numpy(photon_cube_np).float()
+        photon_cube = torch.from_numpy(photon_cube_np.copy()).float()
+
+        # 2. SANITIZE
+        if torch.isnan(photon_cube).any() or torch.isinf(photon_cube).any():
+            # If a file is bad, just return the next sample instead of crashing
+            return self.__getitem__((index + 1) % len(self))
 
         if self.oversampling > 1:
             photon_cube = repeat(
@@ -343,6 +342,7 @@ class IntensityCubeSimulatedNPY(Dataset):
             intensity_ll = intensity_ll.unsqueeze(-1).expand(-1, -1, final_time_steps)
         else:
             raise FileNotFoundError(f"Could not find matching target: {intensity_path}")
+        
 
         return video_name, photon_cube, intensity_ll
 
