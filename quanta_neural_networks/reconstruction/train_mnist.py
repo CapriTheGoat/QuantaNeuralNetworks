@@ -55,13 +55,13 @@ def main(cfg):
     train_dataloader = DataLoader(
         train_dataset,
         shuffle=True,
-        batch_size=1,
+        batch_size=cfg.data.batch_size,
         num_workers=cfg.data.num_workers,
         pin_memory=True,
         prefetch_factor=2,
     )
     val_dataloader = DataLoader(
-        val_dataset, shuffle=True, batch_size=1, num_workers=cfg.data.num_workers
+        val_dataset, shuffle=True, batch_size=cfg.data.batch_size, num_workers=cfg.data.num_workers
     )
 
     # Init model
@@ -107,43 +107,67 @@ def main(cfg):
         with tqdm(total=len(train_dataset), dynamic_ncols=True) as pbar:
             model.train()
             for index, batch in enumerate(train_dataloader):
-                video_name, photon_cube, intensity_ll = batch
+                video_name_batch, photon_cube_batch, intensity_ll_batch = batch
+                
+                batch_size_actual = photon_cube_batch.shape[0]
+                total_batch_loss = 0.0
 
-                photon_cube = photon_cube.squeeze(0).to(device)
-                intensity_ll = intensity_ll.squeeze(0).to(device)
+                # Clear gradients before we process the batch
+                optimizer.zero_grad()
 
-                bocpd_gamma = loguniform(cfg.bocpd_gamma.min, cfg.bocpd_gamma.max)
+                # Feed the images to the model ONE BY ONE to avoid the crash
+                for b in range(batch_size_actual):
+                    # Selecting one image removes the batch dimension! Shape is now [28, 28, 100]
+                    photon_cube = photon_cube_batch[b].to(device)
+                    intensity_ll = intensity_ll_batch[b].to(device)
 
-                output_ll, t_index_ll = model.forward(
-                    photon_cube, bocpd_gamma=bocpd_gamma
-                )
+                    bocpd_gamma = loguniform(cfg.bocpd_gamma.min, cfg.bocpd_gamma.max)
 
-                _, _, output_t = output_ll.shape
+                    output_ll, t_index_ll = model.forward(
+                        photon_cube, bocpd_gamma=bocpd_gamma
+                    )
 
-                if cfg.data.use_half_gt:
-                    output_ll = output_ll[..., output_t // 2 :]
-                    t_index_ll = t_index_ll[output_t // 2 :]
+                    if torch.isnan(output_ll).any():
+                            print(f"\n--- 🚨 FATAL CRASH AT STEP {global_step} 🚨 ---")
+                            print(f"Did the Input cause it? {torch.isnan(photon_cube).any().item()}")
+                            print(f"Did the Target cause it? {torch.isnan(intensity_ll).any().item()}")
+                            exit()
 
-                with torch.no_grad():
-                    intensity_ll = intensity_ll[..., np.array(t_index_ll) - 1]
+                    _, _, output_t = output_ll.shape
 
-                loss = getattr(F, cfg.loss.name)(output_ll, intensity_ll)
-                loss.backward()
+                    if cfg.data.use_half_gt:
+                        output_ll = output_ll[..., output_t // 2 :]
+                        t_index_ll = t_index_ll[output_t // 2 :]
 
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.1)
+                    with torch.no_grad():
+                        intensity_ll = intensity_ll[..., np.array(t_index_ll) - 1]
+
+                    intensity_ll = torch.nan_to_num(intensity_ll, nan=0.0, posinf=1.0, neginf=0.0)
+                    
+
+                    loss = getattr(F, cfg.loss.name)(output_ll, intensity_ll)
+
+                    scaled_loss = loss / (batch_size_actual * cfg.gradient_accumulation_steps)
+                    scaled_loss.backward()
+
+                    total_batch_loss += loss.item()
+
 
                 if (index + 1) % cfg.gradient_accumulation_steps == 0:
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.1)
                     optimizer.step()
                     scheduler.step()
                     optimizer.zero_grad()
 
                 # Logging
-                global_step += cfg.data.batch_size
-                pbar.update(cfg.data.batch_size)
+                global_step += batch_size_actual
+                pbar.update(batch_size_actual)
+
+                avg_batch_loss = total_batch_loss / batch_size_actual
 
                 if index % cfg.logging.scalar_interval == 0:
                     pbar.set_description(
-                        f"Train epoch {epoch + 1} | loss {loss.item():.3f}"
+                        f"Train epoch {epoch + 1} | loss {avg_batch_loss:.3f}"
                     )
 
                     writer.add_scalar(
@@ -206,47 +230,57 @@ def main(cfg):
         logger.info(f"Val epoch {epoch + 1}")
         average_psnr = 0.0
         average_ssim = 0.0
+        total_val_items = 0
 
         with tqdm(
             total=len(val_dataset), dynamic_ncols=True
         ) as pbar, torch.inference_mode():
+            
             for index, batch in enumerate(val_dataloader):
-                video_name, intensity_ll = batch
-                intensity_ll = intensity_ll.squeeze(0).to(device)
+                video_name_batch, intensity_ll_batch = batch
+                batch_size_actual = intensity_ll_batch.shape[0]
 
-                # Simulate photon cube
-                max_probability = loguniform(
-                    cfg.photon_cube.min_probability, cfg.photon_cube.max_probability
-                )
-                intensity_ll *= max_probability
-                photon_cube = simulate_photon_cube(intensity_ll)
+                for b in range(batch_size_actual):
+                    intensity_ll = intensity_ll_batch[b].to(device)
 
-                bocpd_gamma = loguniform(cfg.bocpd_gamma.min, cfg.bocpd_gamma.max)
+                    # Simulate photon cube
+                    max_probability = loguniform(
+                        cfg.photon_cube.min_probability, cfg.photon_cube.max_probability
+                    )
+                    intensity_ll *= max_probability
+                    photon_cube = simulate_photon_cube(intensity_ll)
 
-                output_ll, t_index_ll = model.forward_online(
-                    photon_cube, bocpd_gamma=bocpd_gamma
-                )
+                    bocpd_gamma = loguniform(cfg.bocpd_gamma.min, cfg.bocpd_gamma.max)
 
-                output_ll = output_ll.clamp(0, 1)
+                    output_ll, t_index_ll = model.forward_online(
+                        photon_cube, bocpd_gamma=bocpd_gamma
+                    )
 
-                _, _, output_t = output_ll.shape
+                    output_ll = output_ll.clamp(0, 1)
 
-                if cfg.data.use_half_gt:
-                    output_ll = output_ll[..., output_t // 2 :]
-                    t_index_ll = t_index_ll[output_t // 2 :]
+                    _, _, output_t = output_ll.shape
 
-                intensity_ll = intensity_ll[..., np.array(t_index_ll) - 1]
-                batch_psnr = psnr(output_ll, intensity_ll)
-                batch_ssim = ssim(
-                    rearrange(output_ll, "h w t -> t 1 h w"),
-                    rearrange(intensity_ll, "h w t -> t 1 h w"),
-                    data_range=1.0,
-                )
+                    if cfg.data.use_half_gt:
+                        output_ll = output_ll[..., output_t // 2 :]
+                        t_index_ll = t_index_ll[output_t // 2 :]
 
-                average_psnr += (batch_psnr.mean().item() - average_psnr) / (index + 1)
-                average_ssim += (batch_ssim.mean().item() - average_ssim) / (index + 1)
+                    intensity_ll = intensity_ll[..., np.array(t_index_ll) - 1]
+                    intensity_ll = torch.nan_to_num(intensity_ll, nan=0.0, posinf=1.0, neginf=0.0)
 
-                pbar.update(1)
+                    batch_psnr = psnr(output_ll, intensity_ll)
+                    batch_ssim = ssim(
+                        rearrange(output_ll, "h w t -> t 1 h w"),
+                        rearrange(intensity_ll, "h w t -> t 1 h w"),
+                        data_range=1.0,
+                    )
+
+                    # Mathematically correct rolling averages
+                    total_val_items += 1
+                    average_psnr += (batch_psnr.mean().item() - average_psnr) / total_val_items
+                    average_ssim += (batch_ssim.mean().item() - average_ssim) / total_val_items
+                    
+                
+                pbar.update(batch_size_actual)
 
             # Logging
             writer.add_scalar(
