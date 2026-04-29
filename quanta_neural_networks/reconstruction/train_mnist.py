@@ -130,6 +130,8 @@ def main(cfg):
                 loss = getattr(F, cfg.loss.name)(output_ll, intensity_ll)
                 loss.backward()
 
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.1)
+
                 if (index + 1) % cfg.gradient_accumulation_steps == 0:
                     optimizer.step()
                     scheduler.step()
