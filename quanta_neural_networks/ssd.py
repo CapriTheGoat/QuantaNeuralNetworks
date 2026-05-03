@@ -197,7 +197,7 @@ class SSD(nn.Module):
         :return: (discrete_scalarA, discrete_vecB)
         """
         log_scalarA_bar = scalarA * delta
-        vecB_bar = ((log_scalarA_bar.exp() - 1) / scalarA).unsqueeze(-1) * vecB
+        vecB_bar = (torch.expm1(log_scalarA_bar) / scalarA).unsqueeze(-1) * vecB
         return log_scalarA_bar, vecB_bar
 
     def project(
@@ -214,6 +214,7 @@ class SSD(nn.Module):
         :param in_vector: Input tensor with embedding dim last
         :return: Tuple of (scalarA, dt, vecB, vecC)
         """
+        scalarA = -(F.relu(self.abs_scalarA) + 1e-5)
         scalarA = -F.relu(self.abs_scalarA)
 
         dt = F.relu(self.input_to_dt_proj(in_vector))
