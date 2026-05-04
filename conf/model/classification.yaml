@@ -1,0 +1,9 @@
+name: classification
+parallel_mode: true # use if available
+kwargs:
+  subsampling: 64
+  bocpd_gamma: 8e-4
+ckpt:
+  folder:  ${hydra:runtime.cwd}/data/ckpt/${model.name}/
+  epoch_interval: 1
+  resume: true
