@@ -8,7 +8,6 @@
 
 **Plans (WIP):**
 * Better classification pipeline
-* Accelerate training script (make batches work, for now batches of 1)
 
 
 **Credits:** Varun Sundar, Tianyi Zhang, Sacha Jungerman, Mohit Gupta.
