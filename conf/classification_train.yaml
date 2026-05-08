@@ -6,8 +6,8 @@ defaults:
   - _self_
 
 exp_name: training_run/${model.name}
-num_epoch: 5
-gradient_accumulation_steps: 32
+num_epoch: 10
+gradient_accumulation_steps: 1
 git_sha: ???
 
 loss:
@@ -28,13 +28,13 @@ photon_cube:
   max_probability: 1.0
 
 optim:
-  lr: 1e-4
+  lr: 1e-3
   betas: [0.9, 0.99]
   weight_decay: 0
 
 # lr scheduler (cosine annealing)
 scheduler:
-    eta_min: 1e-8
+    eta_min: 1e-4
 
 hydra:
   output_subdir: null

@@ -48,7 +48,7 @@ def main (cfg):
     train_dataset = IntensityCubeSimulatedNPY(**cfg.data.train)
     val_dataset = IntensityCubeSimulatedNPY(**cfg.data.val)
 
-    # Create dataloaders
+    
     train_dataloader = DataLoader(
         train_dataset,
         shuffle=True,
@@ -61,7 +61,7 @@ def main (cfg):
         val_dataset, shuffle=True, batch_size=cfg.data.batch_size, num_workers=cfg.data.num_workers
     )
 
-    # Init model
+    
     model = BaselineClassifier(**cfg.model.kwargs).to(device)
 
     for module in model.modules():
@@ -97,6 +97,7 @@ def main (cfg):
     )
     epoch_start = global_step // len(train_dataset)
 
+    # Train
     for epoch in range(epoch_start, cfg.num_epoch):
         logger.info(f"Train epoch {epoch + 1} | Global step {global_step}")
         with tqdm(total=len(train_dataset), dynamic_ncols=True) as pbar:
@@ -104,7 +105,7 @@ def main (cfg):
             for index, batch in enumerate(train_dataloader):
                 target_label, photon_cube, intensity_ll = batch
 
-                photon_cube = photon_cube.squeeze(0).to(device)
+                photon_cube = photon_cube.to(device)
                 target_label = target_label.to(device)
 
                 logits = model.forward(photon_cube)
@@ -120,8 +121,11 @@ def main (cfg):
 
                 if (index + 1) % accum_steps == 0:
                     optimizer.step()
-                    scheduler.step()
                     optimizer.zero_grad()
+                    
+                if (index + 1) % 32 == 0:
+                    scheduler.step()
+
 
                 global_step += cfg.data.batch_size
                 pbar.update(cfg.data.batch_size)
@@ -161,7 +165,7 @@ def main (cfg):
             for index, batch in enumerate(val_dataloader):
                 target_label, photon_cube, intensity_ll = batch
 
-                photon_cube = photon_cube.squeeze(0).to(device)
+                photon_cube = photon_cube.to(device)
                 target_label = target_label.to(device)
 
                 logits = model(photon_cube) 
@@ -169,14 +173,15 @@ def main (cfg):
                     logits = logits.unsqueeze(0)
 
                 loss = criterion(logits, target_label)
-                total_val_loss += loss.item()
+                total_val_loss += loss.item() * target_label.size(0)
 
                 predicted_class = torch.argmax(logits, dim=1)
 
-                if predicted_class == target_label:
-                    correct_predictions += 1
+                correct_predictions += (predicted_class == target_label).sum().item()
             
-                total_samples += 1
+                total_samples += target_label.size(0)
+
+                predicted_class = torch.argmax(logits, dim=1)
 
                 pbar.update(cfg.data.batch_size)
         
