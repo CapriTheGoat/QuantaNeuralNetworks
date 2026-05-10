@@ -8,8 +8,8 @@ train:
   max_time_step: ${data.max_time_step}
   oversampling: 1
 val:
-  photon_cube_location: ${data.folder}/train_unpacked/sim_train_2560_mlux/
-  intensity_location: ${data.folder}/train_linear/sim_train_2560_mlux/
+  photon_cube_location: ${data.folder}/train_unpacked_val/sim_train_2560_mlux/
+  intensity_location: ${data.folder}/train_linear_val/sim_train_2560_mlux/
   intensity_fps: ${data.intensity_fps}
   photon_cube_fps: ${data.photon_cube_fps}
   max_time_step: ${data.max_time_step}

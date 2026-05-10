@@ -6,7 +6,7 @@ defaults:
   - _self_
 
 exp_name: training_run/${model.name}
-num_epoch: 10
+num_epoch: 16
 gradient_accumulation_steps: 1
 git_sha: ???
 
