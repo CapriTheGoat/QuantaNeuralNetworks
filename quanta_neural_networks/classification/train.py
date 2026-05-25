@@ -123,7 +123,7 @@ def main (cfg):
                     optimizer.step()
                     optimizer.zero_grad()
                     
-                if (index + 1) % 32 == 0:
+                if (index + 1) % 64 == 0:
                     scheduler.step()
 
 

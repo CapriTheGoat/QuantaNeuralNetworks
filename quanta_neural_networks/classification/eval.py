@@ -50,7 +50,7 @@ def evaluate_full_dataset(cfg):
             photon_cube = photon_cube.to(device)
             target_label = target_label.to(device)
 
-            logits = model(photon_cube)
+            logits = model.simulate_live_camera(photon_cube)
             
             if logits.dim() == 1:
                 logits = logits.unsqueeze(0)
