@@ -1,8 +1,8 @@
 name: classification
 parallel_mode: true # use if available
 kwargs:
-  subsampling: 100
-  bocpd_gamma: 8e-4
+  subsampling: 4
+  bocpd_gamma: 8e-3
 ckpt:
   folder:  ${hydra:runtime.cwd}/data/ckpt/${model.name}/
   epoch_interval: 1

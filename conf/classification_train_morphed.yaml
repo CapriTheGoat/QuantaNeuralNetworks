@@ -1,6 +1,6 @@
 defaults:
   - hydra
-  - model: classification
+  - model: classification_morphed
   - data: spad_mnist
   - override hydra/job_logging: none
   - _self_

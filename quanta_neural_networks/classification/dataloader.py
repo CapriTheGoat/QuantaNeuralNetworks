@@ -16,6 +16,7 @@ import cv2
 import numpy as np
 import torch
 import torchvision
+import random
 from einops import rearrange, repeat
 from jaxtyping import Float
 from natsort import natsorted
@@ -55,6 +56,27 @@ def is_video_file(file_path: str | Path) -> bool:
     path = Path(file_path)
     return path.is_file() and path.suffix.lower() in video_extensions
 
+import torch
+
+def stochastic_spad_morph(video_a, video_b):
+    """
+    Morphs two SPAD videos together by swapping pixels probabilistically.
+    Both videos must be the same shape: [Time, Height, Width]
+    """
+    device = video_a.device
+    T, H, W = video_a.shape
+
+    timeline = torch.linspace(-5, 5, steps=T)
+
+    alpha = torch.sigmoid(timeline).view(T, 1, 1)
+    
+    rng_matrix = torch.rand(T, H, W, device=device)
+
+    use_video_b = rng_matrix < alpha
+    
+    morphed_video = torch.where(use_video_b, video_b, video_a)
+    
+    return morphed_video
 
 def get_intensity_cube(
     path: Path,
@@ -189,81 +211,6 @@ class IntensityCube(Dataset):
 
         return video_name, intensity_ll
         
-# Added class to accept bin files directly according to SPAD-MNIST folder structure
-class IntensityCubeSimulated(Dataset):
-    def __init__(
-        self,
-        photon_cube_location: str | list[str, ...],
-        intensity_location: str | list[str, ...],
-        reshape_size: Tuple[int, int] = None,
-        crop_size: Tuple[int, int] = None,
-        intensity_fps: int = 100,
-        photon_cube_fps: int = 400,
-        max_time_step: int = 1,
-        oversampling: int = 1,
-    ):
-        self.oversampling = oversampling
-        self.intensity_location = Path(intensity_location)
-    
-        if isinstance(photon_cube_location, str):
-            photon_cube_location = [photon_cube_location]
-            
-        path_ll = []
-        for data_dir in photon_cube_location:
-            path_ll += list(Path(data_dir).rglob("*.bin"))
-        
-        if len(path_ll) == 0:
-            raise ValueError(f"No .bin files found in {photon_cube_location}")
-        
-        self.path_ll = natsorted(path_ll)
-    
-    def __len__(self):
-        return len(self.path_ll)
-    
-    def __getitem__(self, index):
-        # load simulated frames
-        path = self.path_ll[index]
-        video_name = path.name
-
-        raw_bytes = np.fromfile(path, dtype=np.uint8)
-
-        unpacked_bits = np.unpackbits(raw_bytes)
-
-        #TODO add pixels_per_frame as hydra config
-        pixels_per_frame = 28 * 28
-        num_frames = len(unpacked_bits) // pixels_per_frame
-
-        cube_t_h_w = unpacked_bits.reshape(num_frames, 28, 28)
-
-        photon_cube_np = np.transpose(cube_t_h_w, (1, 2, 0))
-
-        photon_cube = torch.from_numpy(photon_cube_np).float()
-
-        if self.oversampling > 1:
-            photon_cube = repeat(
-                photon_cube,
-                "h w t -> h w (t num_repeat)",
-                num_repeat = self.oversampling,
-            )
-
-        #load linear frames
-
-        digit_folder = path.parent.name
-        npy_filename = path.stem + ".npy"
-
-        intensity_path = self.intensity_location / digit_folder / npy_filename
-
-        if intensity_path.exists():
-            intensity = np.load(intensity_path)
-            intensity_ll = torch.from_numpy(intensity).float() / 255
-            
-            # Stretch the 2D image to match the exact 3D length of the photon cube!
-            final_time_steps = photon_cube.shape[2]
-            intensity_ll = intensity_ll.unsqueeze(-1).expand(-1, -1, final_time_steps)
-        else:
-            raise FileNotFoundError(f"Could not find matching target: {intensity_path}")
-
-        return video_name, photon_cube, intensity_ll
     
 
 #Added class to accept .npy files directly
@@ -332,6 +279,111 @@ class IntensityCubeSimulatedNPY(Dataset):
         except Exception as e:
             return self.__getitem__((index + 1) % len(self))
         
+class IntensityCubeSimulatedNPYMorphed(Dataset):
+    def __init__(
+        self,
+        photon_cube_location: str | list[str],
+        intensity_location: str,
+        reshape_size: Tuple[int, int] = None,
+        crop_size: Tuple[int, int] = None,
+        intensity_fps: int = 100,
+        photon_cube_fps: int = 400,
+        max_time_step: int = 1,
+        oversampling: int = 10,
+    ):
+        self.oversampling = 2048
+        self.intensity_location = Path(intensity_location)
+    
+        if isinstance(photon_cube_location, str):
+            photon_cube_location = [photon_cube_location]
+            
+        path_ll = []
+        for data_dir in photon_cube_location:
+            # Change 1: Look for the unpacked .npy files!
+            path_ll += list(Path(data_dir).rglob("*.npy"))
+        
+        if len(path_ll) == 0:
+            raise ValueError(f"No simulated .npy files found in {photon_cube_location}")
+        
+        self.path_ll = natsorted(path_ll)
+    
+    def __len__(self):
+        return len(self.path_ll)
+    
+    def __getitem__(self, index):
+        try: 
+            # Simulated frames video A
+            path_A = self.path_ll[index]
+            digit_folder_A = path_A.parent.name
+            target_label_A = torch.tensor(int(digit_folder_A), dtype=torch.long)
+            photon_cube_np_A = np.load(path_A)
+            
+            # Just convert it straight to a tensor
+            photon_cube_A = torch.from_numpy(photon_cube_np_A).float()
+
+            npy_filename = path_A.stem + ".npy"
+
+            intensity_path_A = self.intensity_location / digit_folder_A / npy_filename
+
+            if intensity_path_A.exists():
+                intensity = np.load(intensity_path_A)
+                intensity_ll_A = torch.from_numpy(intensity.copy()).float() / 255
+                intensity_ll_A = intensity_ll_A + 1e-8
+                
+                # Stretch the 2D image to match the exact 3D length of the photon cube
+                final_time_steps = photon_cube_A.shape[2]
+                intensity_ll_A = intensity_ll_A.unsqueeze(-1).expand(-1, -1, final_time_steps)
+            else:
+                raise FileNotFoundError(f"Could not find matching target: {intensity_path_A}")
+            
+            #Simulated frames video B
+            index_B = random.randint(0, len(self.path_ll) - 1)
+            path_B = self.path_ll[index_B]
+            digit_folder_B = path_B.parent.name
+            target_label_B = torch.tensor(int(digit_folder_B), dtype=torch.long)
+            photon_cube_np_B = np.load(path_B)
+            
+            # Just convert it straight to a tensor
+            photon_cube_B = torch.from_numpy(photon_cube_np_B).float()
+
+            npy_filename = path_B.stem + ".npy"
+
+            intensity_path_B = self.intensity_location / digit_folder_B / npy_filename
+
+            if intensity_path_B.exists():
+                intensity = np.load(intensity_path_B)
+                intensity_ll_B = torch.from_numpy(intensity.copy()).float() / 255
+                intensity_ll_B = intensity_ll_B + 1e-8
+                
+                # Stretch the 2D image to match the exact 3D length of the photon cube
+                final_time_steps = photon_cube_B.shape[2]
+                intensity_ll_B = intensity_ll_B.unsqueeze(-1).expand(-1, -1, final_time_steps)
+            else:
+                raise FileNotFoundError(f"Could not find matching target: {intensity_path_A}")
+            
+            morphed_cube = stochastic_spad_morph(photon_cube_A, photon_cube_B)
+            morphed_intensity = stochastic_spad_morph(intensity_ll_A, intensity_ll_B)
+
+            H, W, T = morphed_cube.shape
+
+            sequence_label = torch.full((T,), -100, dtype=torch.long)
+            
+            # Only grade the first 20% (Pure Video A)
+            sequence_label[:T//5] = target_label_A
+            
+            # Ignore a massive 60% of the middle (The blurry transition)
+            
+            # Only grade the last 20% (Pure Video B)
+            sequence_label[-T//5:] = target_label_B
+
+            subsampling = 4
+
+            sequence_label = sequence_label[::subsampling]
+            return sequence_label, morphed_cube, morphed_intensity
+        
+        except Exception as e:
+            return self.__getitem__((index + 1) % len(self))
+
 
 class IntensityImage(Dataset):
     def __init__(
