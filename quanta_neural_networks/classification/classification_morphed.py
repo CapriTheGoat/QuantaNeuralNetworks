@@ -95,7 +95,6 @@ class BaselineClassifier(nn.Module):
         x = rearrange(x, 't b c h w -> (t b) c h w')
         x = self.pool(x)
         x = rearrange(x, '(t b) c 1 1 -> t b c', b=b, t=t_sub)
-        x = x.mean(dim=0)
         
         return self.linear(x)
 
