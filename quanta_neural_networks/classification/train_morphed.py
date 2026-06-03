@@ -71,7 +71,7 @@ def main (cfg):
     ckpt_dir = Path(cfg.model.ckpt.folder)
     ckpt_dir.mkdir(exist_ok=True, parents=True)
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(ignore_index=-100, label_smoothing=0.1)
     optimizer = torch.optim.AdamW(params=model.parameters(), **cfg.optim)
 
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(

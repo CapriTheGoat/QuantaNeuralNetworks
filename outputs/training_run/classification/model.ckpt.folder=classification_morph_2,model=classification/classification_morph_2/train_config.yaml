@@ -33,7 +33,7 @@ data:
     intensity_fps: ${data.intensity_fps}
     photon_cube_fps: ${data.photon_cube_fps}
     max_time_step: 2048
-  folder: /Experiments/riccardoc01/QuantaNeuralNetworks/data/sequences/QIS-MNIST/
+  folder: /home/riccardo/Desktop/QuantaNeuralNetworks/QuantaNeuralNetworks/data/sequences/QIS-MNIST/
   dataset_location: ${data.folder}
   num_workers: 8
   batch_size: 16
@@ -45,7 +45,7 @@ data:
 exp_name: training_run/${model.name}
 num_epoch: 100
 gradient_accumulation_steps: 1
-git_sha: 86b2428f7c15ed55c616fa7322cb91a31949ec5d
+git_sha: b3c58c28bde63bf1400f3e82c8121eec964e5272
 loss:
   name: l1_loss
 logging:
