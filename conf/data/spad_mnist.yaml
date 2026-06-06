@@ -22,7 +22,7 @@ test:
   max_time_step: 2048
 folder: /home/riccardo/Desktop/QuantaNeuralNetworks/QuantaNeuralNetworks/data/sequences/QIS-MNIST/
 dataset_location: ${data.folder}
-num_workers: 8
+num_workers: 4
 batch_size: 16
 intensity_fps: 100
 photon_cube_fps: 100
