@@ -64,19 +64,25 @@ def stochastic_spad_morph(video_a, video_b):
     Both videos must be the same shape: [Time, Height, Width]
     """
     device = video_a.device
-    T, H, W = video_a.shape
+    B, H, W, T = video_a.shape
 
-    timeline = torch.linspace(-5, 5, steps=T)
+    wipe_frames=100
 
-    alpha = torch.sigmoid(timeline).view(T, 1, 1)
+    time_progress = torch.linspace(0, 1, steps=T, device=device).view(1, 1, 1, T)
+    row_position = torch.linspace(0, 1, steps=H, device=device).view(1, H, 1, 1)
+
+    wipe_fraction = wipe_frames / T                     # 100 / 1000 = 0.1
+    start_wipe = 0.5 - (wipe_fraction / 2)
+
+    normalized_time = (time_progress - start_wipe) / wipe_fraction
+
+    sharpness = 20.0
+    alpha = torch.sigmoid((normalized_time - row_position) * sharpness)
     
-    rng_matrix = torch.rand(T, H, W, device=device)
-
+    rng_matrix = torch.rand(B, H, W, T, device=device)
     use_video_b = rng_matrix < alpha
     
-    morphed_video = torch.where(use_video_b, video_b, video_a)
-    
-    return morphed_video
+    return torch.where(use_video_b, video_b, video_a)
 
 def get_intensity_cube(
     path: Path,
@@ -323,18 +329,8 @@ class IntensityCubeSimulatedNPYMorphed(Dataset):
 
             npy_filename = path_A.stem + ".npy"
 
-            intensity_path_A = self.intensity_location / digit_folder_A / npy_filename
-
-            if intensity_path_A.exists():
-                intensity = np.load(intensity_path_A)
-                intensity_ll_A = torch.from_numpy(intensity.copy()).float() / 255
-                intensity_ll_A = intensity_ll_A + 1e-8
-                
-                # Stretch the 2D image to match the exact 3D length of the photon cube
-                final_time_steps = photon_cube_A.shape[2]
-                intensity_ll_A = intensity_ll_A.unsqueeze(-1).expand(-1, -1, final_time_steps)
-            else:
-                raise FileNotFoundError(f"Could not find matching target: {intensity_path_A}")
+            T_A = photon_cube_A.shape[2]
+            intensity_ll_A = torch.zeros((28, 28, T_A), dtype=torch.float32)
             
             #Simulated frames video B
             index_B = random.randint(0, len(self.path_ll) - 1)
@@ -348,38 +344,11 @@ class IntensityCubeSimulatedNPYMorphed(Dataset):
 
             npy_filename = path_B.stem + ".npy"
 
-            intensity_path_B = self.intensity_location / digit_folder_B / npy_filename
-
-            if intensity_path_B.exists():
-                intensity = np.load(intensity_path_B)
-                intensity_ll_B = torch.from_numpy(intensity.copy()).float() / 255
-                intensity_ll_B = intensity_ll_B + 1e-8
-                
-                # Stretch the 2D image to match the exact 3D length of the photon cube
-                final_time_steps = photon_cube_B.shape[2]
-                intensity_ll_B = intensity_ll_B.unsqueeze(-1).expand(-1, -1, final_time_steps)
-            else:
-                raise FileNotFoundError(f"Could not find matching target: {intensity_path_A}")
+            T_B = photon_cube_B.shape[2]
+            intensity_ll_B = torch.zeros((28, 28, T_B), dtype=torch.float32)
             
-            morphed_cube = stochastic_spad_morph(photon_cube_A, photon_cube_B)
-            morphed_intensity = stochastic_spad_morph(intensity_ll_A, intensity_ll_B)
-
-            H, W, T = morphed_cube.shape
-
-            sequence_label = torch.full((T,), -100, dtype=torch.long)
             
-            # Only grade the first 20% (Pure Video A)
-            sequence_label[:T//5] = target_label_A
-            
-            # Ignore a massive 60% of the middle (The blurry transition)
-            
-            # Only grade the last 20% (Pure Video B)
-            sequence_label[-T//5:] = target_label_B
-
-            subsampling = 4
-
-            sequence_label = sequence_label[::subsampling]
-            return sequence_label, morphed_cube, morphed_intensity
+            return target_label_A, target_label_B, photon_cube_A, photon_cube_B
         
         except Exception as e:
             return self.__getitem__((index + 1) % len(self))

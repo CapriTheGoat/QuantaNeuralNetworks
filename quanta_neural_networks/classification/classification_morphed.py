@@ -11,7 +11,7 @@ from quanta_neural_networks.ssd import SSD
 
 
 class BaselineClassifier(nn.Module):
-    def __init__(self, subsampling=64, **kwargs):
+    def __init__(self, subsampling=20, **kwargs):
         super().__init__()
 
         self.subsampling = subsampling
@@ -29,7 +29,7 @@ class BaselineClassifier(nn.Module):
         # Standard classifier head
         self.pool = nn.AdaptiveAvgPool2d((1, 1))
         self.linear = nn.Linear(128, 10)
-    def forward(self, raw_photons, bocpd_gamma: float = 1e-3):
+    def forward(self, raw_photons, bocpd_gamma: float = 1e-4):
         if raw_photons.dim() == 4:
             b, height, width, t_raw = raw_photons.shape
         else:

@@ -20,10 +20,12 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 import torch.optim as optim
 
+
 from quanta_neural_networks.ssd import SSD
 from quanta_neural_networks.ops.array_ops import loguniform
 from quanta_neural_networks.ops.metrics import PSNR
 from quanta_neural_networks.classification.dataloader import IntensityCubeSimulatedNPYMorphed
+from quanta_neural_networks.classification.dataloader import stochastic_spad_morph
 from quanta_neural_networks.classification.classification_morphed import BaselineClassifier
 from quanta_neural_networks.utils.hydra import print_and_save_cfg
 from quanta_neural_networks.utils.train_utils import (
@@ -55,7 +57,7 @@ def main (cfg):
         batch_size=cfg.data.batch_size,
         num_workers=cfg.data.num_workers,
         pin_memory=True,
-        prefetch_factor=2,
+        #prefetch_factor=2,
     )
     val_dataloader = DataLoader(
         val_dataset, shuffle=True, batch_size=cfg.data.batch_size, num_workers=cfg.data.num_workers
@@ -63,6 +65,8 @@ def main (cfg):
 
     
     model = BaselineClassifier(**cfg.model.kwargs).to(device)
+
+    model = torch.compile(model)
 
     for module in model.modules():
         if isinstance(module, SSD):
@@ -103,12 +107,29 @@ def main (cfg):
         with tqdm(total=len(train_dataset), dynamic_ncols=True) as pbar:
             model.train()
             for index, batch in enumerate(train_dataloader):
-                target_label, photon_cube, intensity_ll = batch
+                label_A, label_B, cube_A, cube_B = batch
 
-                photon_cube = photon_cube.to(device)
-                target_label = target_label.to(device)
+                cube_A = cube_A.to(device)
+                cube_B = cube_B.to(device)
+                label_A = label_A.to(device)
+                label_B = label_B.to(device)
 
-                logits = model.forward(photon_cube)
+                morphed_cube = stochastic_spad_morph(cube_A, cube_B)
+
+                T = morphed_cube.shape[3]
+                target_label = torch.full((cube_A.shape[0], T), -100, dtype=torch.long, device=device)
+                
+                mid = T // 2
+                half_wipe = 100 // 2
+                
+                target_label[:, :mid - half_wipe] = label_A.unsqueeze(1)
+                target_label[:, mid + half_wipe:] = label_B.unsqueeze(1)
+
+                # Subsample to match the dataloader/model setting
+                subsampling = 20
+                target_label = target_label[:, ::subsampling]
+
+                logits = model.forward(morphed_cube)
 
                 logits = logits.permute(1, 2, 0).contiguous()
 
@@ -161,25 +182,47 @@ def main (cfg):
         total_val_loss = 0.0
         correct_predictions = 0
         total_samples = 0
+        
+        total_start_correct = 0
+        total_start_samples = 0
+        total_end_correct = 0
+        total_end_samples = 0
+        total_final_frame_correct = 0
 
         with tqdm(
             total=len(val_dataset), dynamic_ncols=True
         ) as pbar, torch.no_grad():
             for index, batch in enumerate(val_dataloader):
-                target_label, photon_cube, intensity_ll = batch
+                label_A, label_B, cube_A, cube_B = batch
 
-                photon_cube = photon_cube.to(device)
-                target_label = target_label.to(device)
+                cube_A = cube_A.to(device)
+                cube_B = cube_B.to(device)
+                label_A = label_A.to(device)
+                label_B = label_B.to(device)
 
-                logits = model(photon_cube) 
+                morphed_cube = stochastic_spad_morph(cube_A, cube_B)
 
+                T = morphed_cube.shape[3]
+                target_label = torch.full((cube_A.shape[0], T), -100, dtype=torch.long, device=device)
+                
+                mid = T // 2
+                half_wipe = 100 // 2
+                
+                target_label[:, :mid - half_wipe] = label_A.unsqueeze(1)
+                target_label[:, mid + half_wipe:] = label_B.unsqueeze(1)
+
+                # Subsample to match the dataloader/model setting
+                subsampling = 20
+                target_label = target_label[:, ::subsampling]
+
+                logits = model(morphed_cube) 
                 logits = logits.permute(1, 2, 0).contiguous()
                 
                 if logits.dim() == 1:
                     logits = logits.unsqueeze(0)
 
                 loss = criterion(logits, target_label)
-                total_val_loss += loss.item() * target_label.size(0)
+                total_val_loss += loss.item()
 
                 predicted_class = torch.argmax(logits, dim=1) # Shape: [Batch, Time]
                 T = target_label.shape[1]
@@ -188,28 +231,33 @@ def main (cfg):
                 correct_predictions += ((predicted_class == target_label) & valid_mask).sum().item()
                 total_samples += valid_mask.sum().item()
             
+                # Track Start Accuracy
                 start_mask = valid_mask[:, :T//4]
-                start_correct = ((predicted_class[:, :T//4] == target_label[:, :T//4]) & start_mask).sum().item()
-                start_total = start_mask.sum().item() + 1e-8 
+                total_start_correct += ((predicted_class[:, :T//4] == target_label[:, :T//4]) & start_mask).sum().item()
+                total_start_samples += start_mask.sum().item()
 
+                # Track End Accuracy
                 end_mask = valid_mask[:, -T//4:]
-                end_correct = ((predicted_class[:, -T//4:] == target_label[:, -T//4:]) & end_mask).sum().item()
-                end_total = end_mask.sum().item() + 1e-8
-            
-                print(f"Start Digit Acc: {start_correct/start_total * 100:.1f}% | End Digit Acc: {end_correct/end_total * 100:.1f}%")
-
+                total_end_correct += ((predicted_class[:, -T//4:] == target_label[:, -T//4:]) & end_mask).sum().item()
+                total_end_samples += end_mask.sum().item()
                 
+                # Track Final Frame Accuracy
+                total_final_frame_correct += (predicted_class[:, -1] == target_label[:, -1]).sum().item()
 
                 pbar.update(cfg.data.batch_size)
         
-        avg_val_loss = total_val_loss / total_samples
+        avg_val_loss = total_val_loss / len(val_dataloader)
+        
+        # Calculate final percentages
         val_accuracy = (correct_predictions / total_samples) * 100
-        # Check accuracy of the very last frame of the video
-        final_frame_accuracy = (predicted_class[:, -1] == target_label[:, -1]).float().mean().item() * 100
-        print(f"Final Frame Accuracy: {final_frame_accuracy:.2f}%")
+        start_acc_pct = (total_start_correct / (total_start_samples + 1e-8)) * 100
+        end_acc_pct = (total_end_correct / (total_end_samples + 1e-8)) * 100
+        final_frame_accuracy = (total_final_frame_correct / len(val_dataset)) * 100
 
-
-        print(f"Validation Loss: {avg_val_loss:.4f} | Validation Accuracy: {val_accuracy:.2f}%")
+        print(f"\n--- Epoch {epoch + 1} Validation ---")
+        print(f"Validation Loss: {avg_val_loss:.4f} | Overall Accuracy: {val_accuracy:.2f}%")
+        print(f"Start Digit Acc: {start_acc_pct:.1f}% | End Digit Acc: {end_acc_pct:.1f}%")
+        print(f"Absolute Final Frame Accuracy: {final_frame_accuracy:.2f}%\n")
 
         writer.add_scalar("validation/loss", avg_val_loss, global_step=global_step)
         writer.add_scalar("validation/accuracy", val_accuracy, global_step=global_step)

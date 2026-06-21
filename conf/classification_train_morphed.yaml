@@ -6,7 +6,7 @@ defaults:
   - _self_
 
 exp_name: training_run/${model.name}
-num_epoch: 90
+num_epoch: 20
 gradient_accumulation_steps: 1
 git_sha: ???
 
@@ -16,7 +16,7 @@ loss:
 logging:
   tensorboard_dir: ${data.folder}/${model.name}/tensorboard
   scalar_interval: 5
-  image_interval: 50
+  image_interval: 100
   num_images: 8
 
 bocpd_gamma:

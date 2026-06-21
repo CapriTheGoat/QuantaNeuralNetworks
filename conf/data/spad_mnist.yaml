@@ -1,6 +1,6 @@
 name: spad_mnist
 train:
-  photon_cube_location: ${data.folder}/train_unpacked/sim_train_2560_mlux/
+  photon_cube_location: ${data.folder}/train/
   intensity_location: ${data.folder}/train_linear/sim_train_2560_mlux/
   crop_size: [28, 28]
   intensity_fps: ${data.intensity_fps}
@@ -8,19 +8,19 @@ train:
   max_time_step: ${data.max_time_step}
   oversampling: 1
 val:
-  photon_cube_location: ${data.folder}/train_unpacked_val/sim_train_2560_mlux/
-  intensity_location: ${data.folder}/train_linear_val/sim_train_2560_mlux/
+  photon_cube_location: ${data.folder}/val/
+  intensity_location: ${data.folder}/val/
   intensity_fps: ${data.intensity_fps}
   photon_cube_fps: ${data.photon_cube_fps}
   max_time_step: ${data.max_time_step}
   oversampling: 1
 test:
-  photon_cube_location: ${data.folder}/test_unpacked/sim_test_2560_mlux/
-  intensity_location: ${data.folder}/test_linear/sim_test_2560_mlux/
+  photon_cube_location: ${data.folder}/test/
+  intensity_location: ${data.folder}/test/
   intensity_fps: ${data.intensity_fps}
   photon_cube_fps: ${data.photon_cube_fps}
   max_time_step: 2048
-folder: /home/riccardo/Desktop/QuantaNeuralNetworks/QuantaNeuralNetworks/data/sequences/QIS-MNIST/
+folder: /home/riccardo/Desktop/QuantaNeuralNetworks/QuantaNeuralNetworks/data/sequences/spad_mnist_1000/
 dataset_location: ${data.folder}
 num_workers: 4
 batch_size: 16
