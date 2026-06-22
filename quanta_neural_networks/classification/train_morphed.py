@@ -58,11 +58,14 @@ def main (cfg):
         num_workers=cfg.data.num_workers,
         pin_memory=True,
         #prefetch_factor=2,
+        drop_last=True
     )
     val_dataloader = DataLoader(
-        val_dataset, shuffle=True, batch_size=cfg.data.batch_size, num_workers=cfg.data.num_workers
+        val_dataset, shuffle=True, batch_size=cfg.data.batch_size, num_workers=cfg.data.num_workers, drop_last=True
     )
 
+    import torch._inductor.config as inductor_config
+    inductor_config.layout_optimization = False
     
     model = BaselineClassifier(**cfg.model.kwargs).to(device)
 
@@ -107,6 +110,7 @@ def main (cfg):
         with tqdm(total=len(train_dataset), dynamic_ncols=True) as pbar:
             model.train()
             for index, batch in enumerate(train_dataloader):
+
                 label_A, label_B, cube_A, cube_B = batch
 
                 cube_A = cube_A.to(device)
@@ -115,6 +119,7 @@ def main (cfg):
                 label_B = label_B.to(device)
 
                 morphed_cube = stochastic_spad_morph(cube_A, cube_B)
+                morphed_cube = morphed_cube.contiguous()
 
                 T = morphed_cube.shape[3]
                 target_label = torch.full((cube_A.shape[0], T), -100, dtype=torch.long, device=device)
@@ -201,6 +206,7 @@ def main (cfg):
                 label_B = label_B.to(device)
 
                 morphed_cube = stochastic_spad_morph(cube_A, cube_B)
+                morphed_cube = morphed_cube.contiguous()
 
                 T = morphed_cube.shape[3]
                 target_label = torch.full((cube_A.shape[0], T), -100, dtype=torch.long, device=device)

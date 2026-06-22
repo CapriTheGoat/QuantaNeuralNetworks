@@ -5,7 +5,7 @@ from torchvision import datasets, transforms
 from visionsim.emulate.spc import emulate_spc
 from tqdm import tqdm
 
-OUTPUT_DIR = "./spad_mnist_static"
+OUTPUT_DIR = "./data/sequences/spad_mnist_1000"
 TRAIN_DIR = os.path.join(OUTPUT_DIR, "train")
 TEST_DIR = os.path.join(OUTPUT_DIR, "test")
 

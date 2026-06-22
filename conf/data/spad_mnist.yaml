@@ -1,7 +1,7 @@
 name: spad_mnist
 train:
   photon_cube_location: ${data.folder}/train/
-  intensity_location: ${data.folder}/train_linear/sim_train_2560_mlux/
+  intensity_location: ${data.folder}/train/
   crop_size: [28, 28]
   intensity_fps: ${data.intensity_fps}
   photon_cube_fps: ${data.photon_cube_fps}
@@ -20,7 +20,7 @@ test:
   intensity_fps: ${data.intensity_fps}
   photon_cube_fps: ${data.photon_cube_fps}
   max_time_step: 2048
-folder: /home/riccardo/Desktop/QuantaNeuralNetworks/QuantaNeuralNetworks/data/sequences/spad_mnist_1000/
+folder: /Experiments/riccardoc01/QuantaNeuralNetworks/data/sequences/spad_mnist_1000/
 dataset_location: ${data.folder}
 num_workers: 4
 batch_size: 16

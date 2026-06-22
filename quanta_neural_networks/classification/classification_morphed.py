@@ -44,17 +44,21 @@ class BaselineClassifier(nn.Module):
         b, h, w, t_sub = x.shape
 
         x = rearrange(x, 'b h w t -> (b t) 1 h w')
+        x = x.contiguous()
         x = self.conv1(x)
         x = F.relu(x)
         x = self.conv2(x)
         x = F.relu(x)
         _, c, h_prime, w_prime = x.shape
         x = rearrange(x, '(b t) c h w -> t c (b h) w', b=b, t=t_sub)
+        x = x.contiguous()
         x, _ = self.ssd(x, t_index_ll)
         x = rearrange(x, 't c (b h) w -> t b c h w', b=b)
         x = rearrange(x, 't b c h w -> (t b) c h w')
+        x = x.contiguous()
         x = self.pool(x)
         x = rearrange(x, '(t b) c 1 1 -> t b c', b=b, t=t_sub)
+        x = x.contiguous()
 
         return self.linear(x)
     
@@ -74,6 +78,7 @@ class BaselineClassifier(nn.Module):
         b, h, w, t_sub = x.shape
 
         x = rearrange(x, 'b h w t -> (b t) 1 h w')
+        x = x.contiguous()
         x = self.conv1(x)
         x = F.relu(x)
         x = self.conv2(x)
@@ -81,7 +86,7 @@ class BaselineClassifier(nn.Module):
         _, c, h_prime, w_prime = x.shape
         
         x = rearrange(x, '(b t) c h w -> t c (b h) w', b=b, t=t_sub)
-        
+        x = x.contiguous()
         self.ssd.clear_hidden_state()
         out_frames = []
         for e, t_index in enumerate(t_index_ll):
@@ -93,8 +98,10 @@ class BaselineClassifier(nn.Module):
         
         x = rearrange(x, 't c (b h) w -> t b c h w', b=b)
         x = rearrange(x, 't b c h w -> (t b) c h w')
+        x = x.contiguous()
         x = self.pool(x)
         x = rearrange(x, '(t b) c 1 1 -> t b c', b=b, t=t_sub)
+        x = x.contiguous()
         
         return self.linear(x)
 
