@@ -33,7 +33,7 @@ data:
     intensity_fps: ${data.intensity_fps}
     photon_cube_fps: ${data.photon_cube_fps}
     max_time_step: 2048
-  folder: /Experiments/riccardoc01/QuantaNeuralNetworks/data/sequences/spad_mnist_1000/
+  folder: /home/riccardo/Desktop/QuantaNeuralNetworks/QuantaNeuralNetworks/data/sequences/spad_mnist_1000/
   dataset_location: ${data.folder}
   num_workers: 4
   batch_size: 16
@@ -45,7 +45,7 @@ data:
 exp_name: training_run/${model.name}
 num_epoch: 20
 gradient_accumulation_steps: 1
-git_sha: 4f8a167d656fe7ddea5a60c6845191d89ef29829
+git_sha: 8a7369ae7222602a31b48acdf464e874be890341
 loss:
   name: l1_loss
 logging:
