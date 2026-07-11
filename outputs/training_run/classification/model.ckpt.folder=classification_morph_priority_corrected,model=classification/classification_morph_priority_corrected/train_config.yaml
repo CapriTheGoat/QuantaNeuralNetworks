@@ -5,7 +5,7 @@ model:
     subsampling: 20
     bocpd_gamma: 0.008
   ckpt:
-    folder: classification_morph_priority
+    folder: classification_morph_priority_corrected
     epoch_interval: 1
     resume: true
 data:

@@ -26,7 +26,7 @@ from quanta_neural_networks.ops.array_ops import loguniform
 from quanta_neural_networks.ops.metrics import PSNR
 from quanta_neural_networks.classification.dataloader import IntensityCubeSimulatedNPYMorphed
 from quanta_neural_networks.classification.dataloader import stochastic_spad_morph
-from quanta_neural_networks.classification.classification_morphed import BaselineClassifier
+from quanta_neural_networks.classification.classification_morphed_priority import BaselineClassifier
 from quanta_neural_networks.utils.hydra import print_and_save_cfg
 from quanta_neural_networks.utils.train_utils import (
     resume_or_finetune,

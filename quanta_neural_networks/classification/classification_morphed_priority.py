@@ -5,7 +5,7 @@ from jaxtyping import Bool, Float
 from torch import nn, Tensor
 from torch.nn import functional as F
 from loguru import logger
-from quanta_neural_networks.integrator_batch import PerPixelBayesian
+from quanta_neural_networks.integrator_batch_priority import PerPixelBayesian
 from quanta_neural_networks.ssd import SSD
 
 
@@ -20,7 +20,7 @@ class BaselineClassifier(nn.Module):
         self.integrator = PerPixelBayesian(**kwargs)
         
         # 2D feature extractor
-        self.conv1 = nn.Conv2d(1, 64, kernel_size=3)
+        self.conv1 = nn.Conv2d(2, 64, kernel_size=3)
         self.conv2 = nn.Conv2d(64, 128, kernel_size=3)
         
         # Time Tracker
@@ -38,13 +38,15 @@ class BaselineClassifier(nn.Module):
             raw_photons = raw_photons.unsqueeze(0)
         t_index_ll = np.arange(1, t_raw + 1)
         
-        x = self.integrator.process_photon_cube(raw_photons, bocpd_gamma=bocpd_gamma, subsampling=self.subsampling)
+        x, attention = self.integrator.process_photon_cube(raw_photons, bocpd_gamma=bocpd_gamma, subsampling=self.subsampling)
         t_index_ll = t_index_ll[self.subsampling - 1 :: self.subsampling]
 
         b, h, w, t_sub = x.shape
 
         x = rearrange(x, 'b h w t -> (b t) 1 h w')
         x = x.contiguous()
+        p_change = rearrange(attention, 'b h w t -> (b t) 1 h w').contiguous()
+        x = torch.cat([x, p_change], dim=1)
         x = self.conv1(x)
         x = F.relu(x)
         x = self.conv2(x)
@@ -73,12 +75,14 @@ class BaselineClassifier(nn.Module):
 
         t_index_ll = np.arange(1, t_raw + 1)
         
-        x = self.integrator.process_photon_cube(raw_photons, bocpd_gamma=bocpd_gamma, subsampling=self.subsampling)
+        x, attention = self.integrator.process_photon_cube(raw_photons, bocpd_gamma=bocpd_gamma, subsampling=self.subsampling)
         t_index_ll = t_index_ll[self.subsampling - 1 :: self.subsampling]
         b, h, w, t_sub = x.shape
 
         x = rearrange(x, 'b h w t -> (b t) 1 h w')
         x = x.contiguous()
+        p_change = rearrange(attention, 'b h w t -> (b t) 1 h w').contiguous()
+        x = torch.cat([x, p_change], dim=1)
         x = self.conv1(x)
         x = F.relu(x)
         x = self.conv2(x)
