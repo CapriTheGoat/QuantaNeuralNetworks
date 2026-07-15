@@ -11,7 +11,7 @@ from quanta_neural_networks.ssd import SSD
 
 
 class BaselineClassifier(nn.Module):
-    def __init__(self, subsampling=20, **kwargs):
+    def __init__(self, subsampling=5, **kwargs):
         super().__init__()
 
         self.subsampling = subsampling

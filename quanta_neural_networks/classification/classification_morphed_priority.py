@@ -29,7 +29,7 @@ class BaselineClassifier(nn.Module):
         # Standard classifier head
         self.pool = nn.AdaptiveAvgPool2d((1, 1))
         self.linear = nn.Linear(128, 10)
-    def forward(self, raw_photons, bocpd_gamma: float = 1e-4):
+    def forward(self, raw_photons, bocpd_gamma: float = 1e-2):
         if raw_photons.dim() == 4:
             b, height, width, t_raw = raw_photons.shape
         else:
@@ -46,6 +46,7 @@ class BaselineClassifier(nn.Module):
         x = rearrange(x, 'b h w t -> (b t) 1 h w')
         x = x.contiguous()
         p_change = rearrange(attention, 'b h w t -> (b t) 1 h w').contiguous()
+        p_change = p_change / (p_change.amax(dim=(1, 2, 3), keepdim=True) + 1e-8)
         x = torch.cat([x, p_change], dim=1)
         x = self.conv1(x)
         x = F.relu(x)
@@ -82,6 +83,7 @@ class BaselineClassifier(nn.Module):
         x = rearrange(x, 'b h w t -> (b t) 1 h w')
         x = x.contiguous()
         p_change = rearrange(attention, 'b h w t -> (b t) 1 h w').contiguous()
+        p_change = p_change / (p_change.amax(dim=(1, 2, 3), keepdim=True) + 1e-8)
         x = torch.cat([x, p_change], dim=1)
         x = self.conv1(x)
         x = F.relu(x)

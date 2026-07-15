@@ -45,7 +45,7 @@ data:
 exp_name: training_run/${model.name}
 num_epoch: 20
 gradient_accumulation_steps: 1
-git_sha: 5c05cfccf8501380b06d367c5bcb6b3cfcf37b74
+git_sha: 1152c4d94bdfc325ef31f6d6707f159a318cc733
 loss:
   name: l1_loss
 logging:

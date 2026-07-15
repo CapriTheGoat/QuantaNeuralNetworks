@@ -110,7 +110,7 @@ def main (cfg):
         with tqdm(total=len(train_dataset), dynamic_ncols=True) as pbar:
             model.train()
             for index, batch in enumerate(train_dataloader):
-
+                break
                 label_A, label_B, cube_A, cube_B = batch
 
                 cube_A = cube_A.to(device)
@@ -194,6 +194,9 @@ def main (cfg):
         total_end_samples = 0
         total_final_frame_correct = 0
 
+        frame_by_frame_correct = None
+        frame_by_frame_valid = None
+
         with tqdm(
             total=len(val_dataset), dynamic_ncols=True
         ) as pbar, torch.no_grad():
@@ -212,16 +215,15 @@ def main (cfg):
                 target_label = torch.full((cube_A.shape[0], T), -100, dtype=torch.long, device=device)
                 
                 mid = T // 2
-                half_wipe = 100 // 2
                 
-                target_label[:, :mid - half_wipe] = label_A.unsqueeze(1)
-                target_label[:, mid + half_wipe:] = label_B.unsqueeze(1)
+                target_label[:, :mid] = label_A.unsqueeze(1)
+                target_label[:, mid:] = label_B.unsqueeze(1)
 
                 # Subsample to match the dataloader/model setting
-                subsampling = 20
+                subsampling = 5
                 target_label = target_label[:, ::subsampling]
 
-                logits = model(morphed_cube) 
+                logits = model.forward(morphed_cube) 
                 logits = logits.permute(1, 2, 0).contiguous()
                 
                 if logits.dim() == 1:
@@ -236,18 +238,25 @@ def main (cfg):
                 valid_mask = target_label != -100
                 correct_predictions += ((predicted_class == target_label) & valid_mask).sum().item()
                 total_samples += valid_mask.sum().item()
+
+                if frame_by_frame_correct is None:
+                    frame_by_frame_correct = torch.zeros(T, device=device)
+                    frame_by_frame_valid = torch.zeros(T, device=device)
+
+                frame_by_frame_correct += ((predicted_class == target_label) & valid_mask).sum(dim=0)
+                frame_by_frame_valid += valid_mask.sum(dim=0)
             
-                # Track Start Accuracy
+                #Start Accuracy
                 start_mask = valid_mask[:, :T//4]
                 total_start_correct += ((predicted_class[:, :T//4] == target_label[:, :T//4]) & start_mask).sum().item()
                 total_start_samples += start_mask.sum().item()
 
-                # Track End Accuracy
+                #End Accuracy
                 end_mask = valid_mask[:, -T//4:]
                 total_end_correct += ((predicted_class[:, -T//4:] == target_label[:, -T//4:]) & end_mask).sum().item()
                 total_end_samples += end_mask.sum().item()
                 
-                # Track Final Frame Accuracy
+                #Final Frame Accuracy
                 total_final_frame_correct += (predicted_class[:, -1] == target_label[:, -1]).sum().item()
 
                 pbar.update(cfg.data.batch_size)
@@ -267,6 +276,33 @@ def main (cfg):
 
         writer.add_scalar("validation/loss", avg_val_loss, global_step=global_step)
         writer.add_scalar("validation/accuracy", val_accuracy, global_step=global_step)
+        writer.add_scalar("validation/start_digit_accuracy", start_acc_pct, global_step=global_step)
+        writer.add_scalar("validation/end_digit_accuracy", end_acc_pct, global_step=global_step)
+        writer.add_scalar("validation/final_frame_accuracy", final_frame_accuracy, global_step=global_step)
+
+        if frame_by_frame_correct is not None:
+            import matplotlib.pyplot as plt
+            
+            # Calculate percentage per frame: (Correct / Total Valid) * 100
+            avg_timeline = (frame_by_frame_correct / frame_by_frame_valid.clamp(min=1)) * 100
+            avg_timeline = avg_timeline.cpu().numpy()
+            
+            fig, ax = plt.subplots(figsize=(10, 5))
+            ax.plot(avg_timeline, label="Average Accuracy", color="#1f77b4", linewidth=2.5)
+            
+            # Draw a vertical line exactly in the middle where the morph happens
+            ax.axvline(x=len(avg_timeline)//2, color="red", linestyle="--", label="Morph Point")
+            
+            ax.set_title(f"Average Frame-by-Frame Accuracy (Epoch {epoch + 1})")
+            ax.set_xlabel("Sub-sampled Frames")
+            ax.set_ylabel("Accuracy (%)")
+            ax.set_ylim(0, 105)
+            ax.grid(True, alpha=0.3)
+            ax.legend()
+            
+            # Send the figure to TensorBoard
+            writer.add_figure("validation/average_timeline", fig, global_step=global_step)
+            plt.close(fig) # Close the figure to free memory
 
         model.train()
 

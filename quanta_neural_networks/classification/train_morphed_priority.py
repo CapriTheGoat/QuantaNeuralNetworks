@@ -110,7 +110,6 @@ def main (cfg):
         with tqdm(total=len(train_dataset), dynamic_ncols=True) as pbar:
             model.train()
             for index, batch in enumerate(train_dataloader):
-                break
                 label_A, label_B, cube_A, cube_B = batch
 
                 cube_A = cube_A.to(device)
@@ -212,6 +211,8 @@ def main (cfg):
                 morphed_cube = stochastic_spad_morph(cube_A, cube_B)
                 morphed_cube = morphed_cube.contiguous()
 
+                
+
                 T = morphed_cube.shape[3]
                 target_label = torch.full((cube_A.shape[0], T), -100, dtype=torch.long, device=device)
                 
@@ -243,25 +244,23 @@ def main (cfg):
                 total_samples += valid_mask.sum().item()
 
                 if frame_by_frame_correct is None:
-                    # Initialize tensors of shape [Time] on the first batch
                     frame_by_frame_correct = torch.zeros(T, device=device)
                     frame_by_frame_valid = torch.zeros(T, device=device)
                 
-                # Sum the correct predictions vertically across all videos in the batch
                 frame_by_frame_correct += ((predicted_class == target_label) & valid_mask).sum(dim=0)
                 frame_by_frame_valid += valid_mask.sum(dim=0)
             
-                # Track Start Accuracy
+                #Start Accuracy
                 start_mask = valid_mask[:, :T//4]
                 total_start_correct += ((predicted_class[:, :T//4] == target_label[:, :T//4]) & start_mask).sum().item()
                 total_start_samples += start_mask.sum().item()
 
-                # Track End Accuracy
+                #End Accuracy
                 end_mask = valid_mask[:, -T//4:]
                 total_end_correct += ((predicted_class[:, -T//4:] == target_label[:, -T//4:]) & end_mask).sum().item()
                 total_end_samples += end_mask.sum().item()
                 
-                # Track Final Frame Accuracy
+                #Final Frame Accuracy
                 total_final_frame_correct += (predicted_class[:, -1] == target_label[:, -1]).sum().item()
 
                 pbar.update(cfg.data.batch_size)

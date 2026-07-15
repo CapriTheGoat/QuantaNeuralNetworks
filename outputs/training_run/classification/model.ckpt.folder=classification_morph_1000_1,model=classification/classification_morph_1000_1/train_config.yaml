@@ -2,7 +2,7 @@ model:
   name: classification
   parallel_mode: true
   kwargs:
-    subsampling: 20
+    subsampling: 5
     bocpd_gamma: 0.008
   ckpt:
     folder: classification_morph_1000_1
@@ -36,7 +36,7 @@ data:
   folder: /home/riccardo/Desktop/QuantaNeuralNetworks/QuantaNeuralNetworks/data/sequences/spad_mnist_1000/
   dataset_location: ${data.folder}
   num_workers: 4
-  batch_size: 16
+  batch_size: 8
   intensity_fps: 100
   photon_cube_fps: 100
   max_time_step: 1
@@ -45,7 +45,7 @@ data:
 exp_name: training_run/${model.name}
 num_epoch: 20
 gradient_accumulation_steps: 1
-git_sha: 8a7369ae7222602a31b48acdf464e874be890341
+git_sha: 1152c4d94bdfc325ef31f6d6707f159a318cc733
 loss:
   name: l1_loss
 logging:

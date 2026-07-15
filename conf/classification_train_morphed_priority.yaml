@@ -21,7 +21,7 @@ logging:
 
 bocpd_gamma:
   min: 8e-5
-  max: 1e-3
+  max: 1e-2
 
 photon_cube:
   min_probability: 0.6

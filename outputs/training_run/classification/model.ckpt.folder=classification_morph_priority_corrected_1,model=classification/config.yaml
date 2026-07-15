@@ -2,10 +2,10 @@ model:
   name: classification
   parallel_mode: true
   kwargs:
-    subsampling: 5
-    bocpd_gamma: 0.008
+    subsampling: 20
+    bocpd_gamma: 0.01
   ckpt:
-    folder: classification_morph_1000_1
+    folder: classification_morph_priority_corrected_1
     epoch_interval: 1
     resume: true
 data:
@@ -36,7 +36,7 @@ data:
   folder: /home/riccardo/Desktop/QuantaNeuralNetworks/QuantaNeuralNetworks/data/sequences/spad_mnist_1000/
   dataset_location: ${data.folder}
   num_workers: 4
-  batch_size: 8
+  batch_size: 16
   intensity_fps: 100
   photon_cube_fps: 100
   max_time_step: 1
@@ -55,7 +55,7 @@ logging:
   num_images: 8
 bocpd_gamma:
   min: 8.0e-05
-  max: 0.001
+  max: 0.01
 photon_cube:
   min_probability: 0.6
   max_probability: 1.0
