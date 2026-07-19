@@ -5,7 +5,7 @@ model:
     subsampling: 20
     bocpd_gamma: 0.01
   ckpt:
-    folder: classification_morph_priority_corrected_1
+    folder: classification_morph_compare_test
     epoch_interval: 1
     resume: true
 data:
@@ -55,7 +55,7 @@ logging:
   num_images: 8
 bocpd_gamma:
   min: 8.0e-05
-  max: 0.01
+  max: 0.001
 photon_cube:
   min_probability: 0.6
   max_probability: 1.0

@@ -110,7 +110,6 @@ def main (cfg):
         with tqdm(total=len(train_dataset), dynamic_ncols=True) as pbar:
             model.train()
             for index, batch in enumerate(train_dataloader):
-                break
                 label_A, label_B, cube_A, cube_B = batch
 
                 cube_A = cube_A.to(device)
@@ -220,7 +219,7 @@ def main (cfg):
                 target_label[:, mid:] = label_B.unsqueeze(1)
 
                 # Subsample to match the dataloader/model setting
-                subsampling = 5
+                subsampling = 20
                 target_label = target_label[:, ::subsampling]
 
                 logits = model.forward(morphed_cube) 
