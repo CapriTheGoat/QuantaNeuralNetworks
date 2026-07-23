@@ -23,7 +23,7 @@ test:
 folder: /home/riccardo/Desktop/QuantaNeuralNetworks/QuantaNeuralNetworks/data/sequences/spad_mnist_1000/
 dataset_location: ${data.folder}
 num_workers: 4
-batch_size: 16
+batch_size: 4
 intensity_fps: 100
 photon_cube_fps: 100
 max_time_step: 1

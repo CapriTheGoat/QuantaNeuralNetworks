@@ -66,7 +66,7 @@ class BaselineClassifier(nn.Module):
         return self.linear(x)
     
     @torch.no_grad()
-    def simulate_live_camera(self, raw_photons, bocpd_gamma: float = 1e-4):
+    def simulate_live_camera(self, raw_photons, bocpd_gamma: float = 1e-2):
         if raw_photons.dim() == 4:
             b, height, width, t_raw = raw_photons.shape
         else:

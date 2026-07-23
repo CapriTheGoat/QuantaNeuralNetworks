@@ -69,10 +69,19 @@ def evaluate_full_dataset(cfg):
     total_correct_1000 = 0
     total_correct_600 = 0
     total_milestone_samples = 0
+
+    total_start_correct = 0
+    total_start_samples = 0
+    total_end_correct = 0
+    total_end_samples = 0
+    total_final_frame_correct = 0
+
+    frame_by_frame_correct = None
+    frame_by_frame_valid = None
     
     print(f"\n--- Starting Full Evaluation on {len(test_dataset)} samples ---")
 
-    subsample_factor = 20
+    subsample_factor = 5
 
     with torch.no_grad(), tqdm(total=len(test_dataset), dynamic_ncols=True) as pbar:
         for batch in test_dataloader:
@@ -88,10 +97,9 @@ def evaluate_full_dataset(cfg):
             target_label = torch.full((cube_A.shape[0], T), -100, dtype=torch.long, device=device)
                 
             mid = T // 2
-            half_wipe = 100 // 2
                 
-            target_label[:, :mid - half_wipe] = label_A.unsqueeze(1)
-            target_label[:, mid + half_wipe:] = label_B.unsqueeze(1)
+            target_label[:, :mid] = label_A.unsqueeze(1)
+            target_label[:, mid:] = label_B.unsqueeze(1)
 
             target_label = target_label[:, ::subsample_factor]
 
@@ -107,7 +115,28 @@ def evaluate_full_dataset(cfg):
             correct_predictions += ((predicted_class == target_label) & valid_mask).sum().item()
             total_samples += valid_mask.sum().item()
 
-            # --- FIX BUG 3: Direct matching coordinates without off-by-one errors ---
+            if frame_by_frame_correct is None:
+                    T_sub = target_label.shape[1]
+                    frame_by_frame_correct = torch.zeros(T_sub, device=device)
+                    frame_by_frame_valid = torch.zeros(T_sub, device=device)
+                
+            frame_by_frame_correct += ((predicted_class == target_label) & valid_mask).sum(dim=0)
+            frame_by_frame_valid += valid_mask.sum(dim=0)
+            
+            #Start Accuracy
+            start_mask = valid_mask[:, :T//4]
+            total_start_correct += ((predicted_class[:, :T//4] == target_label[:, :T//4]) & start_mask).sum().item()
+            total_start_samples += start_mask.sum().item()
+
+            #End Accuracy
+            end_mask = valid_mask[:, -T//4:]
+            total_end_correct += ((predicted_class[:, -T//4:] == target_label[:, -T//4:]) & end_mask).sum().item()
+            total_end_samples += end_mask.sum().item()
+                
+            #Final Frame Accuracy
+            total_final_frame_correct += (predicted_class[:, -1] == target_label[:, -1]).sum().item()
+
+            
             idx_400 = 400 // subsample_factor
             idx_1000 = 1000 // subsample_factor -1
             idx_600 = 600 // subsample_factor
@@ -128,7 +157,6 @@ def evaluate_full_dataset(cfg):
 
             pbar.update(target_label.size(0))
 
-    # --- FIX BUG 1: Reverted multipliers back to standard 100% scale ---
     final_accuracy = (correct_predictions / total_samples) * 100
     final_acc_400 = (total_correct_400 / total_milestone_samples) * 100
     final_acc_1000 = (total_correct_1000 / total_milestone_samples) * 100
@@ -144,6 +172,30 @@ def evaluate_full_dataset(cfg):
     print(f"Accuracy right after morph (Frame 600):  {final_acc_600:.1f}%")
     print(f"Accuracy at the very end (Frame 1000):    {final_acc_1000:.1f}%")
     print(f"====================================\n")
+
+    if frame_by_frame_correct is not None:
+            import matplotlib.pyplot as plt
+            
+            # Calculate percentage per frame: (Correct / Total Valid) * 100
+            avg_timeline = (frame_by_frame_correct / frame_by_frame_valid.clamp(min=1)) * 100
+            avg_timeline = avg_timeline.cpu().numpy()
+            
+            fig, ax = plt.subplots(figsize=(10, 5))
+            ax.plot(avg_timeline, label="Average Accuracy", color="#1f77b4", linewidth=2.5)
+            
+            # Draw a vertical line exactly in the middle where the morph happens
+            ax.axvline(x=len(avg_timeline)//2, color="red", linestyle="--", label="Morph Point")
+            
+            ax.set_title(f"Average Frame-by-Frame Accuracy")
+            ax.set_xlabel("Sub-sampled Frames")
+            ax.set_ylabel("Accuracy (%)")
+            ax.set_ylim(0, 105)
+            ax.grid(True, alpha=0.3)
+            ax.legend()
+            
+            plt.savefig("evaluation_timeline.png", bbox_inches='tight')
+            print("Saved graph to evaluation_timeline.png")
+            plt.close(fig)
 
 if __name__ == "__main__":
     evaluate_full_dataset()
