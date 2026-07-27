@@ -10,7 +10,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 from quanta_neural_networks.classification.classification_morphed_priority import BaselineClassifier
-from quanta_neural_networks.classification.dataloader import stochastic_spad_morph
+from quanta_neural_networks.classification.dataloader_random_morph import stochastic_spad_morph
 from quanta_neural_networks.classification.dataloader import IntensityCubeSimulatedNPYMorphed
 
 @hydra.main(
@@ -92,14 +92,8 @@ def evaluate_full_dataset(cfg):
             label_A = label_A.to(device)
             label_B = label_B.to(device)
 
-            morphed_cube = stochastic_spad_morph(cube_A, cube_B)
+            morphed_cube, target_label = stochastic_spad_morph(cube_A, cube_B, label_A, label_B)
             T = morphed_cube.shape[3]
-            target_label = torch.full((cube_A.shape[0], T), -100, dtype=torch.long, device=device)
-                
-            mid = T // 2
-                
-            target_label[:, :mid] = label_A.unsqueeze(1)
-            target_label[:, mid:] = label_B.unsqueeze(1)
 
             target_label = target_label[:, ::subsample_factor]
 
