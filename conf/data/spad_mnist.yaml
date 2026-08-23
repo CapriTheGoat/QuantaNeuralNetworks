@@ -20,10 +20,10 @@ test:
   intensity_fps: ${data.intensity_fps}
   photon_cube_fps: ${data.photon_cube_fps}
   max_time_step: 2048
-folder: /home/riccardo/Desktop/QuantaNeuralNetworks/QuantaNeuralNetworks/data/sequences/spad_mnist_1000/
+folder: /home/riccardo/Desktop/QuantaNeuralNetworks/QuantaNeuralNetworks/data/sequences/spad_mnist_1000_dcr
 dataset_location: ${data.folder}
 num_workers: 4
-batch_size: 4
+batch_size: 16
 intensity_fps: 100
 photon_cube_fps: 100
 max_time_step: 1

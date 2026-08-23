@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Load one random file you generated
-cube = np.load("./spad_mnist_static/train/0/image_00037.npy")
+cube = np.load("./data/sequences/spad_mnist_1000_dcr/train/0/image_00903.npy")
 
 print(f"Shape: {cube.shape}") 
 print(f"Data Type: {cube.dtype}")

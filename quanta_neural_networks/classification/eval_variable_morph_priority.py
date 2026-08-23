@@ -109,13 +109,6 @@ def evaluate_full_dataset(cfg):
             correct_predictions += ((predicted_class == target_label) & valid_mask).sum().item()
             total_samples += valid_mask.sum().item()
 
-            if frame_by_frame_correct is None:
-                    T_sub = target_label.shape[1]
-                    frame_by_frame_correct = torch.zeros(T_sub, device=device)
-                    frame_by_frame_valid = torch.zeros(T_sub, device=device)
-                
-            frame_by_frame_correct += ((predicted_class == target_label) & valid_mask).sum(dim=0)
-            frame_by_frame_valid += valid_mask.sum(dim=0)
             
             #Start Accuracy
             start_mask = valid_mask[:, :T//4]
@@ -149,6 +142,11 @@ def evaluate_full_dataset(cfg):
             total_correct_600 += (prediction_600 == target_600).sum().item()
             total_milestone_samples += target_label.size(0)
 
+            if "saved_preds" not in locals():
+                num_to_plot = min(3, predicted_class.size(0))
+                saved_preds = predicted_class[:num_to_plot].cpu().numpy()
+                saved_targets = target_label[:num_to_plot].cpu().numpy()
+
             pbar.update(target_label.size(0))
 
     final_accuracy = (correct_predictions / total_samples) * 100
@@ -167,29 +165,45 @@ def evaluate_full_dataset(cfg):
     print(f"Accuracy at the very end (Frame 1000):    {final_acc_1000:.1f}%")
     print(f"====================================\n")
 
-    if frame_by_frame_correct is not None:
-            import matplotlib.pyplot as plt
-            
-            # Calculate percentage per frame: (Correct / Total Valid) * 100
-            avg_timeline = (frame_by_frame_correct / frame_by_frame_valid.clamp(min=1)) * 100
-            avg_timeline = avg_timeline.cpu().numpy()
-            
-            fig, ax = plt.subplots(figsize=(10, 5))
-            ax.plot(avg_timeline, label="Average Accuracy", color="#1f77b4", linewidth=2.5)
-            
-            # Draw a vertical line exactly in the middle where the morph happens
-            ax.axvline(x=len(avg_timeline)//2, color="red", linestyle="--", label="Morph Point")
-            
-            ax.set_title(f"Average Frame-by-Frame Accuracy")
-            ax.set_xlabel("Sub-sampled Frames")
-            ax.set_ylabel("Accuracy (%)")
-            ax.set_ylim(0, 105)
-            ax.grid(True, alpha=0.3)
-            ax.legend()
-            
-            plt.savefig("evaluation_timeline.png", bbox_inches='tight')
-            print("Saved graph to evaluation_timeline.png")
-            plt.close(fig)
+    if "saved_preds" in locals():
+        import matplotlib.pyplot as plt
+        import numpy as np
+        
+        # Take just the first video from the saved batch to keep the graph clean
+        preds = saved_preds[0]
+        targets = saved_targets[0]
+        
+        fig, ax = plt.subplots(figsize=(10, 5))
+        
+        # Find the transition zone where the label is -100
+        transition_mask = (targets == -100)
+        valid_mask = ~transition_mask
+        
+        # Plot predictions as a solid line, exactly like your old graph
+        ax.plot(preds, label="Predicted Class", color="#1f77b4", linewidth=2.5)
+        
+        # Plot the true target line (ignoring the -100 transition gap)
+        valid_indices = np.where(valid_mask)[0]
+        if len(valid_indices) > 0:
+            ax.plot(valid_indices, targets[valid_mask], label="True Class", color="black", linewidth=2.5, linestyle=":")
+        
+        # Highlight the exact morphing zone for this specific video
+        if transition_mask.any():
+            start_morph = np.argmax(transition_mask)
+            end_morph = len(targets) - np.argmax(transition_mask[::-1]) - 1
+            ax.axvspan(start_morph, end_morph, color='red', alpha=0.15, label="Morphing Zone")
 
+        ax.set_title("Network Prediction vs True Class (Single Video)")
+        ax.set_xlabel("Sub-sampled Frames")
+        ax.set_ylabel("Class Label (0-9)")
+        ax.set_yticks(range(10))
+        ax.grid(True, alpha=0.3)
+        ax.legend(loc="upper left")
+        
+        plt.savefig("evaluation_timeline.png", bbox_inches='tight')
+        print("Saved single video graph to evaluation_timeline.png")
+        plt.close(fig)
+
+    
 if __name__ == "__main__":
     evaluate_full_dataset()

@@ -1,0 +1,69 @@
+model:
+  name: classification
+  parallel_mode: true
+  kwargs:
+    subsampling: 20
+    bocpd_gamma: 0.01
+  ckpt:
+    folder: classification_morph_priority_dcr
+    epoch_interval: 1
+    resume: true
+data:
+  name: spad_mnist
+  train:
+    photon_cube_location: ${data.folder}/train/
+    intensity_location: ${data.folder}/train/
+    crop_size:
+    - 28
+    - 28
+    intensity_fps: ${data.intensity_fps}
+    photon_cube_fps: ${data.photon_cube_fps}
+    max_time_step: ${data.max_time_step}
+    oversampling: 1
+  val:
+    photon_cube_location: ${data.folder}/val/
+    intensity_location: ${data.folder}/val/
+    intensity_fps: ${data.intensity_fps}
+    photon_cube_fps: ${data.photon_cube_fps}
+    max_time_step: ${data.max_time_step}
+    oversampling: 1
+  test:
+    photon_cube_location: ${data.folder}/test/
+    intensity_location: ${data.folder}/test/
+    intensity_fps: ${data.intensity_fps}
+    photon_cube_fps: ${data.photon_cube_fps}
+    max_time_step: 2048
+  folder: /home/riccardo/Desktop/QuantaNeuralNetworks/QuantaNeuralNetworks/data/sequences/spad_mnist_1000_dcr
+  dataset_location: ${data.folder}
+  num_workers: 4
+  batch_size: 16
+  intensity_fps: 100
+  photon_cube_fps: 100
+  max_time_step: 1
+  oversampling: 10
+  use_half_gt: true
+exp_name: training_run/${model.name}
+num_epoch: 20
+gradient_accumulation_steps: 1
+git_sha: 03263aa8a465cabbe6ed8222332d44043ad92f6f
+loss:
+  name: l1_loss
+logging:
+  tensorboard_dir: ${data.folder}/${model.name}/tensorboard
+  scalar_interval: 5
+  image_interval: 100
+  num_images: 8
+bocpd_gamma:
+  min: 8.0e-05
+  max: 0.01
+photon_cube:
+  min_probability: 0.6
+  max_probability: 1.0
+optim:
+  lr: 0.001
+  betas:
+  - 0.9
+  - 0.99
+  weight_decay: 0
+scheduler:
+  eta_min: 0.0001

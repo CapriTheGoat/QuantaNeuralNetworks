@@ -130,7 +130,7 @@ def main (cfg):
                 target_label[:, mid + half_wipe:] = label_B.unsqueeze(1)
 
                 # Subsample to match the dataloader/model setting
-                subsampling = 5
+                subsampling = 20
                 target_label = target_label[:, ::subsampling]
 
                 logits = model.forward(morphed_cube)
@@ -222,7 +222,7 @@ def main (cfg):
                 target_label[:, mid:] = label_B.unsqueeze(1)
 
                 # Subsample to match the dataloader/model setting
-                subsampling = 5
+                subsampling = 20
                 target_label = target_label[:, ::subsampling]
 
                 logits = model(morphed_cube) 
