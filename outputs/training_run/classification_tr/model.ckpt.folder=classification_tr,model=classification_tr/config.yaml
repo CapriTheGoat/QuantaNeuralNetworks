@@ -1,0 +1,48 @@
+model:
+  name: classification_tr
+  parallel_mode: true
+  kwargs:
+    subsampling: 20
+    bocpd_gamma: 0.01
+  ckpt:
+    folder: classification_tr
+    epoch_interval: 1
+    resume: true
+data:
+  name: tr_mnist_async
+  folder: /home/riccardo/Desktop/QuantaNeuralNetworks/QuantaNeuralNetworks/data/sequences/TR-MNIST
+  train:
+    h5_file_path: ${data.folder}/train.h5
+  val:
+    h5_file_path: ${data.folder}/test.h5
+  test:
+    h5_file_path: ${data.folder}/test.h5
+  num_workers: 4
+  batch_size: 1
+  num_frames: 64
+  max_time: 25.0
+exp_name: training_run/${model.name}
+num_epoch: 10
+gradient_accumulation_steps: 1
+git_sha: 9e9e47723340e155d0ee92bea40c2ec1672f1a69
+loss:
+  name: l1_loss
+logging:
+  tensorboard_dir: ${data.folder}/${model.name}/tensorboard
+  scalar_interval: 5
+  image_interval: 50
+  num_images: 8
+bocpd_gamma:
+  min: 8.0e-05
+  max: 0.001
+photon_cube:
+  min_probability: 0.6
+  max_probability: 1.0
+optim:
+  lr: 0.001
+  betas:
+  - 0.9
+  - 0.99
+  weight_decay: 0
+scheduler:
+  eta_min: 5.0e-05
