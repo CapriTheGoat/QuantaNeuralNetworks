@@ -5,7 +5,7 @@ from jaxtyping import Bool, Float
 from torch import nn, Tensor
 from torch.nn import functional as F
 from loguru import logger
-from quanta_neural_networks.integrator_batch_tr import PerPixelBayesian
+from quanta_neural_networks.integrator_batch_tr_test import PerPixelBayesian
 from quanta_neural_networks.ssd import SSD
 
 
