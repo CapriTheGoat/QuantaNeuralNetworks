@@ -31,7 +31,7 @@ from quanta_neural_networks.utils.train_utils import (
     simulate_photon_cube,
 )
 
-def stream_to_delta_t_cube(event_stream: torch.Tensor, spatial_size=(28, 28), num_frames=64, max_time=1000.0):
+def stream_to_delta_t_cube(event_stream: torch.Tensor, spatial_size=(28, 28), num_frames=100, max_time=1000.0):
     """
     Converts a sparse [N, 3] TR-SPAD stream into a dense [H, W, T] cube of inter-arrival times (delta_t)
     """

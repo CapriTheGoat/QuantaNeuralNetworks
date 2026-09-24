@@ -5,7 +5,7 @@ model:
     subsampling: 20
     bocpd_gamma: 0.01
   ckpt:
-    folder: classification_tr_2
+    folder: classification_tr_3
     epoch_interval: 1
     resume: true
 data:

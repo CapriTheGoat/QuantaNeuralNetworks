@@ -64,6 +64,21 @@ class PerPixelBayesian(nn.Module):
             f"min_filter_size={self.min_filter_size})"
         )
 
+    def init_live_mode(self, h: int, w: int, device: torch.device):
+        """Initializes the sparse state for live event-by-event processing."""
+        self._b, self._h, self._w = 1, h, w
+        
+        self.alpha_ll = torch.ones((1, h, w, self.memory_size), device=device)
+        self.beta_ll = torch.ones((1, h, w, self.memory_size), device=device)
+        self.forecaster_distribution = torch.zeros((1, h, w, self.memory_size), device=device)
+        self.total_occupied = torch.ones((1, h, w), dtype=torch.long, device=device)
+        self.ema = torch.zeros((1, h, w), device=device)
+        
+        self.forecaster_distribution[..., 0] = 1.0
+        
+        self.last_photon_time = torch.zeros((1, h, w), device=device)
+        self.forecaster_time = torch.zeros((1, h, w, self.memory_size), device=device)
+
     def set_cube(self, delta_t_cube: Float[Tensor, "b h w t"]):
         """Initializes or resizes state tensors based on input cube dimensions."""
         _b, _h, _w, _t = delta_t_cube.shape
@@ -163,7 +178,7 @@ class PerPixelBayesian(nn.Module):
         delta_t = delta_t.unsqueeze(-1)
         mask_ = mask.unsqueeze(-1)
         
-        # 1. Compute Likelihoods
+        # Compute Likelihoods
         log_likelihood = (
             torch.log(self.alpha_ll) 
             - torch.log(self.beta_ll + delta_t) 
@@ -172,7 +187,6 @@ class PerPixelBayesian(nn.Module):
         max_ll = log_likelihood.max(dim=-1, keepdim=True)[0]
         likelihood = torch.exp(log_likelihood - max_ll).clamp(min=1e-9)
         
-        # 2. Derive Hypotheses Options
         new_forecaster_prob = self.bocpd_gamma * torch.sum(
             likelihood * self.forecaster_distribution, dim=-1
         )
@@ -197,9 +211,7 @@ class PerPixelBayesian(nn.Module):
             mask_has_capacity, self.total_occupied, indices_to_drop
         )
 
-        # 3. SAFELY SCATTER INITIALIZATION VALUES FIRST
-        # Uses torch.where to ensure we only overwrite values where an insertion is actually happening,
-        # preventing cross-pixel corruption when vectorizing.
+        
         insert_indices_expanded = insert_indices.unsqueeze(-1)
         mask_insert_expanded = mask_should_insert.unsqueeze(-1)
 
@@ -213,7 +225,6 @@ class PerPixelBayesian(nn.Module):
             )
         )
         
-        # Reverted back to `t_index` to perfectly preserve your intended run length math
         self.forecaster_distribution_index.scatter_(
             -1, 
             insert_indices_expanded, 
@@ -247,12 +258,100 @@ class PerPixelBayesian(nn.Module):
         self.alpha_ll += mask_
         self.beta_ll += (delta_t * mask_)
 
-        # 5. Correct weights and shift total indices
         self.forecaster_distribution /= self.forecaster_distribution.sum(
             dim=-1, keepdim=True
         ).clamp(min=1e-9)
         
         self.total_occupied += (mask_should_insert & mask_has_capacity).long()
+
+    def process_single_event(self, y: int, x: int, t: float):
+        """Processes exactly one asynchronous event at [y, x] in real continuous time."""
+        b = 0
+        last_t = self.last_photon_time[b, y, x]
+        dt = max(t - last_t, 1e-6)
+        
+        alpha = self.alpha_ll[b, y, x]
+        beta = self.beta_ll[b, y, x]
+        forecaster_prob = self.forecaster_distribution[b, y, x]
+        forecaster_time = self.forecaster_time[b, y, x]
+        occupied = self.total_occupied[b, y, x].item()
+
+        run_length = (t - forecaster_time).clamp(1e-6)
+        estimated_run_length = torch.expm1(
+            torch.sum(
+                forecaster_prob * torch.log1p(run_length)
+                )
+            )
+        decay_factor = torch.exp(-dt / estimated_run_length.clamp(min=1e-6))
+        self.ema[b, y, x] = (self.ema[b, y, x] * decay_factor) + 1
+
+        log_likelihood = (
+                    torch.log(alpha) 
+                    - torch.log(beta + dt) 
+                    + alpha * torch.log(beta / (beta + dt))
+                )
+
+        max_likelihood = log_likelihood.max(dim=-1, keepdim=True)[0]
+        likelihood = torch.exp(log_likelihood - max_likelihood).clamp(min=1e-9)
+
+        new_forecaster_prob = self.bocpd_gamma * torch.sum(
+            likelihood * forecaster_prob, dim=-1
+        )
+
+        forecaster_prob = forecaster_prob * (1 - self.bocpd_gamma) * likelihood
+
+        worst_forecaster = torch.argmin(forecaster_prob)
+        insert_idx = occupied if occupied < self.memory_size else worst_forecaster
+
+        alpha += 1.0
+        beta += dt
+
+        if (occupied == self.memory_size) or (new_forecaster_prob > worst_forecaster):
+            forecaster_prob[insert_idx] = new_forecaster_prob
+            forecaster_time[insert_idx] = t
+            alpha[insert_idx] = 1.0
+            beta[insert_idx] = 1.0
+
+            if occupied < self.memory_size:
+                self.total_occupied[b, y, x] += 1
+            
+        
+        forecaster_prob /= forecaster_prob.sum().clamp(min=1e-9)
+
+            
+        self.alpha_ll[b, y, x] = alpha
+        self.beta_ll[b, y, x] = beta
+        self.forecaster_distribution[b, y, x] = forecaster_prob
+        self.forecaster_time[b, y, x] = forecaster_time
+        self.last_photon_time[b, y, x] = t
+        
+    @torch.no_grad()
+    def get_frame(self, current_t: float) -> torch.Tensor:
+        """Decays the current EMA to current_t to generate a 2D frame for the CNN."""
+        b = 0
+        dt_grid = (current_t - self.last_photon_time[b]).clamp(min=1e-6)
+        run_lengths = (current_t - self.forecaster_time[b]).clamp(min=1e-6)
+        
+        estimated_run_length_grid = torch.expm1(torch.sum(
+            self.forecaster_distribution[b] * torch.log1p(run_lengths), dim=-1
+        ))
+        
+        estimated_run_length_grid = estimated_run_length_grid.squeeze()
+        dt_grid = dt_grid.squeeze()
+        
+        if self.min_filter_size > 1:
+            grid_4d = estimated_run_length_grid.unsqueeze(0).unsqueeze(0)
+            
+            pad = self.min_filter_size // 2
+            pooled_4d = -F.max_pool2d(-grid_4d, kernel_size=self.min_filter_size, stride=1, padding=pad)
+            
+            estimated_run_length_grid = pooled_4d.squeeze()
+            
+        decay_grid = torch.exp(-dt_grid / estimated_run_length_grid.clamp(min=1e-6))
+        
+        frame = (self.ema[b].squeeze() * decay_grid).unsqueeze(0).unsqueeze(0)
+        
+        return frame
 
     def clamp_recons(self, recons: Tensor) -> Tensor:
         """Clamps and optionally normalizes the reconstruction."""

@@ -405,7 +405,6 @@ class TRMNISTAsynchronousDataset(Dataset):
             return target_label, event_stream
             
         except Exception as e:
-            # Fallback for corrupted data files
             return self.__getitem__((index + 1) % len(self))
 
 
