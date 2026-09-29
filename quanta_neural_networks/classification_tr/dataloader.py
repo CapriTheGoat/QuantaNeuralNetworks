@@ -399,8 +399,7 @@ class TRMNISTAsynchronousDataset(Dataset):
             # Ensure the events are chronological
             events = events[events[:, 2].argsort()]
             
-            # Return as a float32 tensor
-            event_stream = torch.from_numpy(events).float()
+            event_stream = torch.from_numpy(events).double()
             
             return target_label, event_stream
             

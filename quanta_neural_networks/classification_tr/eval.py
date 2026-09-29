@@ -69,6 +69,13 @@ def main (cfg):
 
     correct_predictions = 0
     total_samples = 0
+
+    sample_idx = 0
+    target_label, event_stream = test_dataset[sample_idx]
+    print(f"Target Label: {target_label}")
+    print(f"Total events in sample: {len(event_stream)}")
+    print(f"Min y: {event_stream[:, 0].min()}, Max y: {event_stream[:, 0].max()}")
+    print(f"Min x: {event_stream[:, 1].min()}, Max x: {event_stream[:, 1].max()}")
         
     print(f"\n--- Starting Full Evaluation on {len(test_dataset)} samples ---")
     
@@ -86,7 +93,7 @@ def main (cfg):
 
                 real_max_time = clean_stream[:, 2].max().item()
                 
-                logits = model.simulate_live_camera(clean_stream, real_max_time, num_training_frames=64)
+                logits = model.simulate_live_camera(clean_stream)
                 
                 final_pred = logits.argmax(dim=1).item()
                 

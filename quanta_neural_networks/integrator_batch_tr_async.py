@@ -50,21 +50,13 @@ class PerPixelBayesian(nn.Module):
         self.t_absolute = 0
         self._b, self._h, self._w, self._t = (None, None, None, None)
 
-        self.register_buffer("recons_tensor", None, persistent=False)
-        self.register_buffer("alpha_ll", None, persistent=False)
-        self.register_buffer("beta_ll", None, persistent=False)
-        self.register_buffer(
-            "forecaster_distribution", None, persistent=False
-        )
-        self.register_buffer(
-            "forecaster_distribution_index", None, persistent=False
-        )
-        self.register_buffer("total_occupied", None, persistent=False)
-        self.register_buffer("ema", None, persistent=False)
-        self.register_buffer("last_photon_time", None, persistent=False)
-        self.register_buffer(
-            "last_ema_update_time", None, persistent=False
-        )
+        self.register_buffer("recons_tensor", None)
+        self.register_buffer("alpha_ll", None)
+        self.register_buffer("beta_ll", None)
+        self.register_buffer("forecaster_distribution", None)
+        self.register_buffer("forecaster_distribution_index", None)
+        self.register_buffer("total_occupied", None)
+        self.register_buffer("ema", None)
 
     def __repr__(self):
         return (
@@ -88,9 +80,9 @@ class PerPixelBayesian(nn.Module):
         self.last_photon_time = torch.zeros((1, h, w), device=device)
         self.forecaster_time = torch.zeros((1, h, w, self.memory_size), device=device)
 
-    def set_cube(self, delta_t_cube: Float[Tensor, "b h w t k"]):
+    def set_cube(self, delta_t_cube: Float[Tensor, "b h w t"]):
         """Initializes or resizes state tensors based on input cube dimensions."""
-        _b, _h, _w, _t, _ = delta_t_cube.shape
+        _b, _h, _w, _t = delta_t_cube.shape
         device = delta_t_cube.device
         dtype = torch.float32
 
@@ -111,18 +103,12 @@ class PerPixelBayesian(nn.Module):
             self.forecaster_distribution = torch.zeros(
                 (_b, _h, _w, self.memory_size), device=device, dtype=dtype
             )
-            self.forecaster_distribution_index = torch.zeros(
-                (_b, _h, _w, self.memory_size), device=device, dtype=torch.long
+            self.forecaster_time = torch.zeros(
+                (_b, _h, _w, self.memory_size), device=device, dtype=dtype
             )
             self.total_occupied = torch.ones((_b, _h, _w), device=device, dtype=torch.long)
             self.ema = torch.zeros((_b, _h, _w), device=device, dtype=dtype)
             self.sample_weight = torch.zeros((_b, _h, _w), device=device, dtype=dtype)
-            self.last_photon_time = torch.zeros(
-                (_b, _h, _w), device=device, dtype=torch.float64
-            )
-            self.last_ema_update_time = torch.zeros_like(
-                self.last_photon_time
-            )
 
         if not self.t_absolute:
             self.init_bocpd_arrays()
@@ -134,14 +120,12 @@ class PerPixelBayesian(nn.Module):
             self.alpha_ll.fill_(1.0)
             self.beta_ll.fill_(1.0)
             self.forecaster_distribution.zero_()
-            self.forecaster_distribution_index.zero_()
+            self.forecaster_time.zero_()
             self.alpha_ll[..., 0] = 1.0
             self.beta_ll[..., 0] = 1.0
             self.forecaster_distribution[..., 0] = 1.0
             self.total_occupied.fill_(1)
             self.ema.zero_()
-            self.last_photon_time.zero_()
-            self.last_ema_update_time.zero_()
 
     def min_pool2d(
         self, x: Float[Tensor, "b h w"], kernel_size: int
@@ -155,72 +139,22 @@ class PerPixelBayesian(nn.Module):
         return pooled.squeeze(1)
 
     @torch.compile
-    def _process_photon_slot(
-        self,
-        dt: Tensor,
-        mask: Tensor,
-        run_time: Tensor,
-        t_index: Tensor,
-    ):
-        mask = mask.to(self.ema.dtype)
-        active = mask.bool()
-
-        event_time = self.last_photon_time + dt
-
-        dt_decay = torch.where(
-            active,
-            (event_time - self.last_ema_update_time).clamp(min=0),
-            0.0,
-        ).to(self.ema.dtype)
-
-        self.ema = (
-            self.ema * torch.exp(-dt_decay / run_time) + mask
-        )
-
-        self.last_photon_time = torch.where(
-            active, event_time, self.last_photon_time
-        )
-        self.last_ema_update_time = torch.where(
-            active, event_time, self.last_ema_update_time
-        )
-
-        self._update_forecaster_and_laplace_torch(
-            dt.float(), mask, t_index
-        )    
-
-    def _get_reconstruction_torch(
-        self,
-        delta_t_cube: Tensor,
-        photon_mask: Tensor,
-        time_per_frame: float,
-        t_absolute: int,
-    ):
-
-        slots_per_bin = (
-            photon_mask.sum(dim=-1)
-            .amax(dim=(0, 1, 2))
-            .long()
-            .cpu()
-            .tolist()
-        )
-
-        bin_indices = torch.arange(
-            t_absolute,
-            t_absolute + self._t,
-            device=delta_t_cube.device,
-            dtype=torch.long,
-        )
-
+    def _get_reconstruction_torch(self, delta_t_cube: Tensor, absolute_time_cube: Tensor, photon_mask: Tensor):
+        """
+        Iterates through time, performing vectorized updates for each time step.
+        This method is JIT-compiled for performance.
+        """
         for t_index in range(self._t):
-            run_lengths = (
-                (t_index + t_absolute + 1)
-                - self.forecaster_distribution_index
-            ).float().clamp(min=0)
+            delta_t = delta_t_cube[..., t_index].float()
+            absolute_t = absolute_time_cube[..., t_index].float() # The true physical time of this step
+            mask = photon_mask[..., t_index].float()
+
+            # Direct continuous time subtraction (matching process_single_event perfectly)
+            run_lengths = (absolute_t.unsqueeze(-1) - self.forecaster_time).clamp(min=1e-6)
 
             estimated_run_length = torch.expm1(
                 torch.sum(
-                    self.forecaster_distribution * torch.log1p(run_lengths),
-                    dim=-1,
+                    self.forecaster_distribution * torch.log1p(run_lengths), dim=-1
                 )
             )
 
@@ -229,39 +163,16 @@ class PerPixelBayesian(nn.Module):
                     estimated_run_length, self.min_filter_size
                 )
 
-            run_time = (
-                estimated_run_length * time_per_frame
-            ).clamp(min=1e-6)
-
-            # Process each photon stored in this bin.
-            bin_index = bin_indices[t_index]
-
-            for slot in range(slots_per_bin[t_index]):
-                self._process_photon_slot(
-                    delta_t_cube[..., t_index, slot].contiguous(),
-                    photon_mask[..., t_index, slot].contiguous(),
-                    run_time,
-                    bin_index,
-                )
-
-            # Advance the EMA to the end of the bin.
-            readout_time = (
-                t_index + t_absolute + 1
-            ) * time_per_frame
-
-            tail = (
-                readout_time - self.last_ema_update_time
-            ).clamp(min=0).to(self.ema.dtype)
-
-            self.ema = self.ema * torch.exp(-tail / run_time)
-            self.last_ema_update_time.fill_(readout_time)
+            # No more time_per_frame conversion. Use the exact time surface.
+            decay_factor = torch.exp(-delta_t / estimated_run_length.clamp(min=1e-6))
+            
+            self.ema = (self.ema * decay_factor) + mask
+            self._update_forecaster_and_laplace_torch(delta_t, mask, absolute_t)
 
             if (t_index + 1) % self.subsampling == 0:
-                self.recons_tensor[
-                    ..., t_index // self.subsampling
-                ] = self.ema
+                self.recons_tensor[..., t_index // self.subsampling] = self.ema
 
-    def _update_forecaster_and_laplace_torch(self, delta_t: Tensor, mask: Tensor, t_index: Tensor):
+    def _update_forecaster_and_laplace_torch(self, delta_t: Tensor, mask: Tensor, absolute_t: Tensor):
         """Performs a vectorized update of the BOCPD state for all pixels."""
         delta_t = delta_t.unsqueeze(-1)
         mask_ = mask.unsqueeze(-1)
@@ -313,13 +224,13 @@ class PerPixelBayesian(nn.Module):
             )
         )
         
-        self.forecaster_distribution_index.scatter_(
+        self.forecaster_time.scatter_(
             -1, 
             insert_indices_expanded, 
             torch.where(
                 mask_insert_expanded, 
-                t_index, 
-                self.forecaster_distribution_index.gather(-1, insert_indices_expanded)
+                absolute_t.unsqueeze(-1), 
+                self.forecaster_time.gather(-1, insert_indices_expanded)
             )
         )
         
@@ -451,9 +362,9 @@ class PerPixelBayesian(nn.Module):
     @torch.no_grad()
     def process_delta_cube(
         self,
-        delta_t_cube: Float[Tensor, "b h w t k"],
-        photon_mask: Float[Tensor, "b h w t k"],
-        time_per_frame: float,
+        delta_t_cube: Float[Tensor, "b h w t"],
+        absolute_time_cube: Float[Tensor, "b h w t"],
+        photon_mask: Float[Tensor, "b h w t"],
         bocpd_gamma: float = None,
         memory_size: int = None,
         subsampling: int = None,
@@ -479,16 +390,15 @@ class PerPixelBayesian(nn.Module):
             )
 
             self.set_cube(delta_t_cube)
-            self._get_reconstruction_torch(delta_t_cube, photon_mask, time_per_frame, self.t_absolute)
+            
+            # Pass the absolute time cube instead of time_per_frame
+            self._get_reconstruction_torch(delta_t_cube, absolute_time_cube, photon_mask)
+            
             recons_ll = self.recons_tensor
-
             if self.hot_pixel_mask is not None:
                 recons_ll = nearest_neighbor_inpaint(recons_ll, self.hot_pixel_mask)
 
-            recons_ll = self.clamp_recons(recons_ll)
-            self.t_absolute += self._t
-
-            return recons_ll
+            return self.clamp_recons(recons_ll)
 
     def update_hyperparams(self, **kwargs):
         """Dynamically update class attributes if new values are provided."""

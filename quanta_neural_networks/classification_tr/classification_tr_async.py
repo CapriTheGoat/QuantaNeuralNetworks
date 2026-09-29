@@ -5,8 +5,8 @@ from jaxtyping import Bool, Float
 from torch import nn, Tensor
 from torch.nn import functional as F
 from loguru import logger
-from quanta_neural_networks.integrator_batch_tr_test import PerPixelBayesian
-from quanta_neural_networks.ssd_tr import SSD
+from quanta_neural_networks.integrator_batch_tr_async import PerPixelBayesian
+from quanta_neural_networks.ssd import SSD
 
 
 
@@ -24,65 +24,64 @@ class BaselineClassifier(nn.Module):
         self.conv2 = nn.Conv2d(64, 128, kernel_size=3)
         
         # Time Tracker
-        self.ssd = SSD(
-            in_dim=128,
-            state_dim=12,
-            head_dim=32,
-            subsampling=1,
-        )
+        self.ssd = SSD(in_dim=128, state_dim=12, head_dim=32)
         
         # Standard classifier head
         self.pool = nn.AdaptiveAvgPool2d((1, 1))
         self.linear = nn.Linear(128, 10)
 
-    def forward(self, delta_cube, photon_mask, time_per_frame, bocpd_gamma: float = None):
-        """
-        TRAINING MODE
-        """
-        if delta_cube.ndim == 4:
+    def forward(self, delta_cube, absolute_time_cube, photon_mask):
+        # --- THE FIX: Sever recurrent memory between independent batches ---
+        self.ssd.clear_hidden_state()
+        
+        if delta_cube.dim() == 4:
+            b, h, w, t_raw = delta_cube.shape
+        else:
+            b = 1
+            h, w, t_raw = delta_cube.shape
             delta_cube = delta_cube.unsqueeze(0)
+            absolute_time_cube = absolute_time_cube.unsqueeze(0)
             photon_mask = photon_mask.unsqueeze(0)
 
-        if delta_cube.ndim != 5 or photon_mask.shape != delta_cube.shape:
-            raise ValueError(
-                "Expected matching cubes with shape [B,H,W,T,K]."
-            )
-
-        b, height, width, t_raw, _ = delta_cube.shape
-        
-        t_scale = float(time_per_frame)
-
-        t_index_ll = (np.arange(1, t_raw + 1) * t_scale).astype(np.float32)
-        
-        # 1. Continuous-time state update
+        # 1. Process 4D surface
         x = self.integrator.process_delta_cube(
-            delta_cube, 
-            photon_mask,
-            time_per_frame,
-            bocpd_gamma=bocpd_gamma, 
-            subsampling=self.subsampling,
-            normalize=True
+            delta_t_cube=delta_cube, 
+            absolute_time_cube=absolute_time_cube, 
+            photon_mask=photon_mask
         )
-
-        t_index_ll = t_index_ll[self.subsampling - 1 :: self.subsampling]
-
-        b, h, w, t_sub = x.shape
-        x = rearrange(x, 'b h w t -> (b t) 1 h w')
-        x = self.conv1(x)
-        x = F.relu(x)
-        x = self.conv2(x)
-        x = F.relu(x)
-        _, c, h_prime, w_prime = x.shape
-        x = rearrange(x, '(b t) c h w -> t c (b h) w', b=b, t=t_sub)
-        x, _ = self.ssd(x, t_index_ll)
-        x = rearrange(x, 't c (b h) w -> (t b) c h w', b=b)
-        x = self.pool(x)
         
-        x = rearrange(x, '(t b) c 1 1 -> t b c', b=b, t=t_sub)
-        
-        x = x.mean(dim=0)
+        t_index_ll = absolute_time_cube[0, 0, 0, :].cpu().numpy()
+        subsampling = getattr(self.integrator, 'subsampling', 1)
 
-        return self.linear(x)
+        out = []
+        for i in range(x.shape[-1]):
+            x_step = x[..., i].unsqueeze(1)
+            
+            feat = F.relu(self.conv1(x_step))
+            feat = F.relu(self.conv2(feat))
+
+            flat_dim = feat.view(b, -1).shape[-1]
+            pooled_dim = self.pool(feat).view(b, -1).shape[-1]
+            
+            if pooled_dim == getattr(self.ssd, 'in_dim', pooled_dim):
+                feat = self.pool(feat).view(b, -1)
+            elif flat_dim == getattr(self.ssd, 'in_dim', flat_dim):
+                feat = feat.view(b, -1)
+            else:
+                feat = feat.view(b, -1) 
+
+            time_idx = min((i + 1) * subsampling - 1, len(t_index_ll) - 1)
+            time_instant = t_index_ll[time_idx]
+
+            # SSD processes the spatial features
+            feat = self.ssd.forward_online(feat, time_instant=time_instant)
+            out.append(feat)
+
+        # 2. Sequence aggregation
+        stacked_out = torch.stack(out, dim=1)
+        mean_feat = stacked_out.mean(dim=1) 
+        
+        return self.linear(mean_feat)
     
     @torch.no_grad()
     def simulate_live_camera(self, event_stream):
