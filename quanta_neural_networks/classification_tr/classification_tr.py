@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from collections import deque
 from einops import rearrange
 from jaxtyping import Bool, Float
 from torch import nn, Tensor
@@ -146,4 +147,70 @@ class BaselineClassifier(nn.Module):
         mean_feat = pooled.mean(dim=0).unsqueeze(0)
 
         return self.linear(mean_feat)
+
+    
+    def reset_camera(self, history_readouts):
+        """Call once when starting a new camera stream."""
+        if history_readouts < 1:
+            raise ValueError("history_readouts must be positive.")
+
+        self.ssd.clear_hidden_state()
+        self._camera_first_packet = True
+        self._camera_features = deque(maxlen=history_readouts)
+
+    @torch.no_grad()
+    def forward_camera(
+        self,
+        delta_cube,
+        photon_mask,
+        time_per_frame,
+        current_time,
+    ):
+        """
+        Process one NEW packet and emit one prediction.
+
+        Each packet contains exactly self.subsampling raw time bins.
+        """
+        if (
+            delta_cube.ndim != 5
+            or delta_cube.shape[0] != 1
+            or delta_cube.shape[-2] != self.subsampling
+        ):
+            raise ValueError(
+                "Expected [1, H, W, self.subsampling, K]."
+            )
+
+        x = self.integrator.process_delta_cube(
+            delta_cube,
+            photon_mask,
+            time_per_frame,
+            subsampling=self.subsampling,
+            normalize=True,
+            clear_states=self._camera_first_packet,
+        )
+        self._camera_first_packet = False
+
+        # One adaptive readout: [1, H, W, 1] -> [1, 1, H, W]
+        x = x[..., 0].unsqueeze(1)
+
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+
+        # SSD retains its hidden state and previous timestamp.
+        x = self.ssd.forward_online(
+            x.squeeze(0),
+            time_instant=float(current_time),
+        )
+
+        # [C, H', W'] -> [1, C]
+        feature = self.pool(x.unsqueeze(0)).flatten(1)
+
+        # Keep a bounded temporal window for a continuous camera.
+        self._camera_features.append(feature)
+        mean_feature = torch.stack(
+            tuple(self._camera_features),
+            dim=0,
+        ).mean(dim=0)
+
+        return self.linear(mean_feature)
 

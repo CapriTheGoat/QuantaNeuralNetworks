@@ -103,10 +103,14 @@ class PerPixelBayesian(nn.Module):
         if (_b, _h, _w) != (self._b, self._h, self._w):
             self._b, self._h, self._w = _b, _h, _w
             self.alpha_ll = torch.ones(
-                (_b, _h, _w, self.memory_size), device=device, dtype=dtype
+                (_b, _h, _w, self.memory_size),
+                device=device,
+                dtype=torch.float64,
             )
             self.beta_ll = torch.ones(
-                (_b, _h, _w, self.memory_size), device=device, dtype=dtype
+                (_b, _h, _w, self.memory_size),
+                device=device,
+                dtype=torch.float64,
             )
             self.forecaster_distribution = torch.zeros(
                 (_b, _h, _w, self.memory_size), device=device, dtype=dtype
@@ -185,7 +189,7 @@ class PerPixelBayesian(nn.Module):
         )
 
         self._update_forecaster_and_laplace_torch(
-            dt.float(), mask, t_index
+            dt, mask, t_index
         )    
 
     def _get_reconstruction_torch(
@@ -442,11 +446,22 @@ class PerPixelBayesian(nn.Module):
         return frame
 
     def clamp_recons(self, recons: Tensor) -> Tensor:
-        """Clamps and optionally normalizes the reconstruction."""
-        max_value = 1.0
+        # recons: [B, H, W, T]
         if self.normalize:
-            max_value = torch_quantile(recons, self.quantile).clamp(min=1e-6)
-        return (recons / max_value).clamp(0, 1)
+            if self.quantile == 1.0:
+                scale = recons.amax(dim=(1, 2), keepdim=True)
+            else:
+                # [B, H*W, T] -> [B, 1, T] -> [B, 1, 1, T]
+                scale = torch.quantile(
+                    recons.flatten(1, 2),
+                    q=self.quantile,
+                    dim=1,
+                    keepdim=True,
+                ).unsqueeze(1)
+
+            recons = recons / scale.clamp_min(1e-6)
+
+        return recons.clamp(0, 1)
 
     @torch.no_grad()
     def process_delta_cube(
