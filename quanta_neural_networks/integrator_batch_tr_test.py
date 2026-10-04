@@ -178,7 +178,7 @@ class PerPixelBayesian(nn.Module):
         ).to(self.ema.dtype)
 
         self.ema = (
-            self.ema * torch.exp(-dt_decay / run_time) + mask
+            self.ema * torch.exp(-dt_decay / run_time) + mask / run_time
         )
 
         self.last_photon_time = torch.where(
@@ -356,66 +356,6 @@ class PerPixelBayesian(nn.Module):
         
         self.total_occupied += (mask_should_insert & mask_has_capacity).long()
 
-    def process_single_event(self, y: int, x: int, t: float):
-        """Processes exactly one asynchronous event at [y, x] in real continuous time."""
-        b = 0
-        last_t = self.last_photon_time[b, y, x]
-        dt = max(t - last_t, 1e-6)
-        
-        alpha = self.alpha_ll[b, y, x]
-        beta = self.beta_ll[b, y, x]
-        forecaster_prob = self.forecaster_distribution[b, y, x]
-        forecaster_time = self.forecaster_time[b, y, x]
-        occupied = self.total_occupied[b, y, x].item()
-
-        run_length = (t - forecaster_time).clamp(1e-6)
-        estimated_run_length = torch.expm1(
-            torch.sum(
-                forecaster_prob * torch.log1p(run_length)
-                )
-            )
-        decay_factor = torch.exp(-dt / estimated_run_length.clamp(min=1e-6))
-        self.ema[b, y, x] = (self.ema[b, y, x] * decay_factor) + 1
-
-        log_likelihood = (
-                    torch.log(alpha) 
-                    - torch.log(beta + dt) 
-                    + alpha * torch.log(beta / (beta + dt))
-                )
-
-        max_likelihood = log_likelihood.max(dim=-1, keepdim=True)[0]
-        likelihood = torch.exp(log_likelihood - max_likelihood).clamp(min=1e-9)
-
-        new_forecaster_prob = self.bocpd_gamma * torch.sum(
-            likelihood * forecaster_prob, dim=-1
-        )
-
-        forecaster_prob = forecaster_prob * (1 - self.bocpd_gamma) * likelihood
-
-        worst_forecaster = torch.argmin(forecaster_prob)
-        insert_idx = occupied if occupied < self.memory_size else worst_forecaster
-
-        alpha += 1.0
-        beta += dt
-
-        if (occupied == self.memory_size) or (new_forecaster_prob > worst_forecaster):
-            forecaster_prob[insert_idx] = new_forecaster_prob
-            forecaster_time[insert_idx] = t
-            alpha[insert_idx] = 1.0
-            beta[insert_idx] = 1.0
-
-            if occupied < self.memory_size:
-                self.total_occupied[b, y, x] += 1
-            
-        
-        forecaster_prob /= forecaster_prob.sum().clamp(min=1e-9)
-
-            
-        self.alpha_ll[b, y, x] = alpha
-        self.beta_ll[b, y, x] = beta
-        self.forecaster_distribution[b, y, x] = forecaster_prob
-        self.forecaster_time[b, y, x] = forecaster_time
-        self.last_photon_time[b, y, x] = t
         
     @torch.no_grad()
     def get_frame(self, current_t: float) -> torch.Tensor:
