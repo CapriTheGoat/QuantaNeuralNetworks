@@ -3,13 +3,13 @@ name: tr_mnist_async
 folder: /home/riccardo/Desktop/QuantaNeuralNetworks/QuantaNeuralNetworks/data/sequences/TR-MNIST
 
 train:
-  h5_file_path: ${data.folder}/train.h5
+  h5_file_path: ${data.folder}/sim_train_640_mlux.h5
 
 val:
   h5_file_path: ${data.folder}/test.h5
 
 test:
-  h5_file_path: ${data.folder}/test.h5
+  h5_file_path: ${data.folder}/sim_test_640_mlux.h5
 
 # Dataloader params
 num_workers: 4
