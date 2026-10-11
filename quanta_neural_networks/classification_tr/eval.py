@@ -21,6 +21,8 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 import torch.optim as optim
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 
 from quanta_neural_networks.ssd_tr import SSD
 from quanta_neural_networks.ops.array_ops import loguniform
@@ -274,6 +276,186 @@ def camera_stream(
 if torch.cuda.is_available():
     torch.backends.cuda.matmul.allow_tf32 = True
 
+def save_evaluation_image(
+    confusion_matrix,
+    total_samples,
+    correct_predictions,
+    final_accuracy,
+    mean_loss,
+    correct_readouts,
+    total_readouts,
+    output_path,
+):
+    cm = np.asarray(confusion_matrix, dtype=np.int64)
+    support = cm.sum(axis=1)
+
+    row_percent = np.divide(
+        100.0 * cm,
+        support[:, None],
+        out=np.zeros_like(cm, dtype=float),
+        where=support[:, None] > 0,
+    )
+    recalls = row_percent.diagonal()
+
+    readout_accuracy = (
+        f"{100.0 * correct_readouts / total_readouts:.2f}%"
+        if total_readouts else "N/A"
+    )
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    fig = Figure(figsize=(15, 9), facecolor="#f4f7fb")
+    FigureCanvasAgg(fig)
+
+    try:
+        fig.text(
+            0.04, 0.955,
+            "TR-MNIST | Camera evaluation",
+            fontsize=22, weight="bold", color="#142c46",
+        )
+        fig.text(
+            0.04, 0.925,
+            "Final recording predictions and accuracy across all camera readouts",
+            fontsize=11, color="#50657c",
+        )
+
+        # Summary metrics.
+        metrics = [
+            ("SAMPLES TESTED", f"{total_samples:,}"),
+            ("CORRECT FINAL PREDICTIONS", f"{correct_predictions:,}"),
+            ("FINAL ACCURACY", f"{final_accuracy:.2f}%"),
+            ("ALL-READOUT ACCURACY", readout_accuracy),
+            ("FINAL MEAN CROSS-ENTROPY", f"{mean_loss:.4f}"),
+        ]
+
+        for i, (label, value) in enumerate(metrics):
+            card = fig.add_axes(
+                [0.04 + i * 0.186, 0.80, 0.174, 0.105]
+            )
+            card.set_facecolor("white")
+            card.set_xticks([])
+            card.set_yticks([])
+
+            for spine in card.spines.values():
+                spine.set_color("#e2e8f0")
+
+            card.text(
+                0.07, 0.72, label,
+                fontsize=8.5, color="#50657c",
+            )
+            card.text(
+                0.07, 0.20, value,
+                fontsize=25, weight="bold", color="#142c46",
+            )
+
+        # Confusion matrix: printed values are counts.
+        # Color represents the percentage within each true-digit row.
+        ax_cm = fig.add_axes([0.055, 0.17, 0.405, 0.57])
+        heatmap = ax_cm.imshow(
+            row_percent, cmap="Blues", vmin=0, vmax=100
+        )
+        ax_cm.set_title(
+            "Confusion matrix | Final readout",
+            loc="left", pad=18,
+            fontsize=13, weight="bold", color="#142c46",
+        )
+        ax_cm.set_xticks(range(10))
+        ax_cm.set_yticks(range(10))
+        ax_cm.set_xlabel("Predicted digit", labelpad=10)
+        ax_cm.set_ylabel("True digit", labelpad=10)
+
+        ax_cm.set_xticks(np.arange(-0.5, 10, 1), minor=True)
+        ax_cm.set_yticks(np.arange(-0.5, 10, 1), minor=True)
+        ax_cm.grid(which="minor", color="white", linewidth=1)
+        ax_cm.tick_params(which="both", length=0)
+
+        for spine in ax_cm.spines.values():
+            spine.set_visible(False)
+
+        for true_digit in range(10):
+            for predicted_digit in range(10):
+                count = cm[true_digit, predicted_digit]
+                color = (
+                    "white"
+                    if row_percent[true_digit, predicted_digit] > 55
+                    else "#142c46"
+                )
+                ax_cm.text(
+                    predicted_digit, true_digit, str(count),
+                    ha="center", va="center",
+                    fontsize=9, color=color,
+                )
+
+        colorbar_ax = fig.add_axes([0.465, 0.17, 0.013, 0.57])
+        colorbar = fig.colorbar(heatmap, cax=colorbar_ax)
+        colorbar.set_label(
+            "Percentage within each true-digit row (%)",
+            fontsize=9,
+        )
+        colorbar.outline.set_visible(False)
+
+        # Per-digit recall, including correct/total sample counts.
+        ax_recall = fig.add_axes([0.57, 0.17, 0.39, 0.57])
+        ax_recall.barh(
+            range(10), recalls, height=0.58, color="#188a84"
+        )
+        ax_recall.set_title(
+            "Per-digit recall | Final readout",
+            loc="left", pad=18,
+            fontsize=13, weight="bold", color="#142c46",
+        )
+        ax_recall.set_yticks(range(10))
+        ax_recall.set_ylim(9.5, -0.5)
+        ax_recall.set_xlim(0, 160)
+        ax_recall.set_xticks([0, 25, 50, 75, 100])
+        ax_recall.set_xlabel("Recall (%)", labelpad=10)
+        ax_recall.set_ylabel("Digit")
+        ax_recall.set_axisbelow(True)
+        ax_recall.grid(
+            axis="x", color="#e2e8f0", linewidth=0.8
+        )
+        ax_recall.tick_params(length=0)
+
+        for spine in ax_recall.spines.values():
+            spine.set_visible(False)
+
+        for digit in range(10):
+            label = (
+                f"{recalls[digit]:.2f}%  "
+                f"({cm[digit, digit]}/{support[digit]})"
+                if support[digit]
+                else "N/A (no samples)"
+            )
+            ax_recall.text(
+                104, digit, label,
+                va="center", fontsize=9, color="#142c46",
+            )
+
+        fig.text(
+            0.04, 0.065,
+            "Matrix labels are counts; color shows row percentages. "
+            "Final metrics use one prediction per recording.",
+            fontsize=10, color="#50657c",
+        )
+        fig.text(
+            0.04, 0.035,
+            f"Camera readouts: {total_readouts:,} | "
+            f"Correct readouts: {correct_readouts:,}. "
+            "All-readout accuracy includes intermediate and final predictions.",
+            fontsize=10, color="#50657c",
+        )
+
+        fig.savefig(
+            output_path,
+            dpi=200,
+            facecolor=fig.get_facecolor(),
+        )
+    finally:
+        fig.clear()
+
+    return output_path
+
 @hydra.main(
     config_path=f"../../conf",
     config_name=f"{Path(__file__).parent.name}_{Path(__file__).stem}",
@@ -470,6 +652,22 @@ def main (cfg):
         "(rows=true, columns=predicted; digits 0–9):"
     )
     print(confusion_matrix.numpy())
+    image_path = ckpt_dir / (
+        f"evaluation_results_{time.strftime('%Y%m%d_%H%M%S')}.png"
+    )
+
+    save_evaluation_image(
+        confusion_matrix=confusion_matrix.detach().cpu().numpy(),
+        total_samples=total_samples,
+        correct_predictions=correct_predictions,
+        final_accuracy=final_accuracy,
+        mean_loss=mean_loss,
+        correct_readouts=correct_readouts,
+        total_readouts=total_readouts,
+        output_path=image_path,
+    )
+
+    logger.info(f"Saved evaluation image: {image_path}")
 
 if __name__ == "__main__":
     main()

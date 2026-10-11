@@ -9,7 +9,7 @@ val:
   h5_file_path: ${data.folder}/test.h5
 
 test:
-  h5_file_path: ${data.folder}/sim_test_640_mlux.h5
+  h5_file_path: ${data.folder}/sim_test_2560_mlux.h5
 
 # Dataloader params
 num_workers: 4
