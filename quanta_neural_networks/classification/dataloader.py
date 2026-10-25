@@ -231,8 +231,10 @@ class IntensityCubeSimulatedNPY(Dataset):
         photon_cube_fps: int = 400,
         max_time_step: int = 1,
         oversampling: int = 10,
+        load_intensity: bool = True,
     ):
         self.oversampling = 2048
+        self.load_intensity = load_intensity
         self.intensity_location = Path(intensity_location)
     
         if isinstance(photon_cube_location, str):
@@ -259,8 +261,11 @@ class IntensityCubeSimulatedNPY(Dataset):
             target_label = torch.tensor(int(digit_folder), dtype=torch.long)
             photon_cube_np = np.load(path)
             
-            # Just convert it straight to a tensor
             photon_cube = torch.from_numpy(photon_cube_np).float()
+            if not self.load_intensity:
+                return target_label, photon_cube, torch.empty(
+                    0, dtype=torch.float32
+                )
 
             # TARGET FRAMES
             digit_folder = path.parent.name
@@ -273,7 +278,6 @@ class IntensityCubeSimulatedNPY(Dataset):
                 intensity_ll = torch.from_numpy(intensity.copy()).float() / 255
                 intensity_ll = intensity_ll + 1e-8
                 
-                # Stretch the 2D image to match the exact 3D length of the photon cube
                 final_time_steps = photon_cube.shape[2]
                 intensity_ll = intensity_ll.unsqueeze(-1).expand(-1, -1, final_time_steps)
             else:
@@ -283,7 +287,9 @@ class IntensityCubeSimulatedNPY(Dataset):
             return target_label, photon_cube, intensity_ll
         
         except Exception as e:
-            return self.__getitem__((index + 1) % len(self))
+            raise RuntimeError(
+                f"Failed to load sample {self.path_ll[index]}"
+            ) from e
         
 class IntensityCubeSimulatedNPYMorphed(Dataset):
     def __init__(

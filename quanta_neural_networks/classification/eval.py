@@ -20,7 +20,10 @@ from quanta_neural_networks.classification.dataloader import IntensityCubeSimula
 def evaluate_full_dataset(cfg):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    test_dataset = IntensityCubeSimulatedNPY(**cfg.data.val)
+    test_dataset = IntensityCubeSimulatedNPY(
+        **cfg.data.val,
+        load_intensity=False,
+    )
     
     test_dataloader = DataLoader(
         test_dataset, 

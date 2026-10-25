@@ -1,0 +1,69 @@
+model:
+  name: classification
+  parallel_mode: true
+  kwargs:
+    subsampling: 20
+    bocpd_gamma: 0.01
+  ckpt:
+    folder: classification_comparison_baseline
+    epoch_interval: 1
+    resume: true
+data:
+  name: spad_mnist
+  train:
+    photon_cube_location: ${data.folder}/train_unpacked_640/sim_train_640_mlux/
+    intensity_location: ${data.folder}/train_linear/
+    crop_size:
+    - 28
+    - 28
+    intensity_fps: ${data.intensity_fps}
+    photon_cube_fps: ${data.photon_cube_fps}
+    max_time_step: ${data.max_time_step}
+    oversampling: 1
+  val:
+    photon_cube_location: ${data.folder}/train_unpacked_val_640/sim_train_640_mlux/
+    intensity_location: ${data.folder}/train_linear_val/
+    intensity_fps: ${data.intensity_fps}
+    photon_cube_fps: ${data.photon_cube_fps}
+    max_time_step: ${data.max_time_step}
+    oversampling: 1
+  test:
+    photon_cube_location: ${data.folder}/test_unpacked_640/sim_test_640_mlux/
+    intensity_location: ${data.folder}/test_linear/
+    intensity_fps: ${data.intensity_fps}
+    photon_cube_fps: ${data.photon_cube_fps}
+    max_time_step: 2048
+  folder: /home/riccardo/Desktop/QuantaNeuralNetworks/QuantaNeuralNetworks/data/sequences/QIS-MNIST
+  dataset_location: ${data.folder}
+  num_workers: 4
+  batch_size: 8
+  intensity_fps: 100
+  photon_cube_fps: 100
+  max_time_step: 1
+  oversampling: 10
+  use_half_gt: true
+exp_name: training_run/${model.name}
+num_epoch: 32
+gradient_accumulation_steps: 1
+git_sha: a4e6deff3faabf1f01e40b5b6afc8034ad57300f
+loss:
+  name: l1_loss
+logging:
+  tensorboard_dir: ${data.folder}/${model.name}/tensorboard
+  scalar_interval: 5
+  image_interval: 50
+  num_images: 8
+bocpd_gamma:
+  min: 8.0e-05
+  max: 0.001
+photon_cube:
+  min_probability: 0.6
+  max_probability: 1.0
+optim:
+  lr: 0.001
+  betas:
+  - 0.9
+  - 0.99
+  weight_decay: 0
+scheduler:
+  eta_min: 5.0e-05

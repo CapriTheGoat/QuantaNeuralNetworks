@@ -45,8 +45,8 @@ def main (cfg):
 
     logger.info(f"Using device {device}")
 
-    train_dataset = IntensityCubeSimulatedNPY(**cfg.data.train)
-    val_dataset = IntensityCubeSimulatedNPY(**cfg.data.val)
+    train_dataset = IntensityCubeSimulatedNPY(**cfg.data.train, load_intensity=False,)
+    val_dataset = IntensityCubeSimulatedNPY(**cfg.data.val, load_intensity=False,)
 
     
     train_dataloader = DataLoader(
