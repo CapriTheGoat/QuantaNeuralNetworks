@@ -208,6 +208,12 @@ def main (cfg):
         logger.info(f"Train epoch {epoch + 1} | Global step {global_step}")
         with tqdm(total=len(train_dataset), dynamic_ncols=True) as pbar:
             model.train()
+            print(
+    "Integrator settings:",
+    f"normalize={model.integrator.normalize},",
+    f"quantile={model.integrator.quantile},",
+    f"subsampling={model.subsampling}",
+)
             optimizer.zero_grad()
             for index, batch in enumerate(train_dataloader):
                 target_label, event_stream = batch

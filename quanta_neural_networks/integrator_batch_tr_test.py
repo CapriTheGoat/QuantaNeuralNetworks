@@ -440,6 +440,17 @@ class PerPixelBayesian(nn.Module):
             if self.hot_pixel_mask is not None:
                 recons_ll = nearest_neighbor_inpaint(recons_ll, self.hot_pixel_mask)
 
+            if not getattr(self, "_printed_readout_stats", False):
+                print(
+                "TR readouts BEFORE clamp:",
+                f"min={recons_ll.min().item():.6g}",
+                f"max={recons_ll.max().item():.6g}",
+                f"mean={recons_ll.mean().item():.6g}",
+                f"fraction above 1="
+                f"{(recons_ll > 1).float().mean().item():.2%}",
+            )
+            self._printed_readout_stats = True
+
             recons_ll = self.clamp_recons(recons_ll)
             self.t_absolute += self._t
 

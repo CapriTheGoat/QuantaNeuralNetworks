@@ -1,0 +1,197 @@
+{
+  "model": "QIS QNN",
+  "checkpoint": "/home/riccardo/Desktop/QuantaNeuralNetworks/QuantaNeuralNetworks/outputs/training_run/classification/model.ckpt.folder=classification_comparison_baseline,model=classification/classification_comparison_baseline/checkpoint.pth",
+  "prediction_scope": "one returned prediction per recording",
+  "total_samples": 11996,
+  "correct_predictions": 10686,
+  "accuracy_percent": 89.07969323107703,
+  "mean_cross_entropy": 0.33954888992771215,
+  "confusion_matrix": [
+    [
+      948,
+      1,
+      60,
+      8,
+      21,
+      45,
+      69,
+      3,
+      13,
+      16
+    ],
+    [
+      0,
+      1327,
+      11,
+      2,
+      3,
+      2,
+      0,
+      3,
+      0,
+      0
+    ],
+    [
+      2,
+      11,
+      922,
+      47,
+      11,
+      166,
+      19,
+      6,
+      4,
+      3
+    ],
+    [
+      0,
+      3,
+      11,
+      1188,
+      2,
+      10,
+      0,
+      8,
+      1,
+      3
+    ],
+    [
+      0,
+      16,
+      14,
+      8,
+      1088,
+      4,
+      12,
+      4,
+      12,
+      10
+    ],
+    [
+      0,
+      10,
+      33,
+      14,
+      1,
+      1008,
+      5,
+      9,
+      3,
+      1
+    ],
+    [
+      7,
+      12,
+      21,
+      0,
+      11,
+      16,
+      1109,
+      0,
+      7,
+      0
+    ],
+    [
+      0,
+      11,
+      7,
+      27,
+      9,
+      11,
+      0,
+      1180,
+      2,
+      6
+    ],
+    [
+      9,
+      3,
+      21,
+      9,
+      21,
+      64,
+      47,
+      1,
+      952,
+      43
+    ],
+    [
+      4,
+      6,
+      17,
+      42,
+      35,
+      30,
+      2,
+      76,
+      13,
+      964
+    ]
+  ],
+  "confusion_matrix_axes": {
+    "rows": "true",
+    "columns": "predicted"
+  },
+  "per_digit": [
+    {
+      "digit": 0,
+      "total": 1184,
+      "correct": 948,
+      "recall_percent": 80.06756756756756
+    },
+    {
+      "digit": 1,
+      "total": 1348,
+      "correct": 1327,
+      "recall_percent": 98.44213649851632
+    },
+    {
+      "digit": 2,
+      "total": 1191,
+      "correct": 922,
+      "recall_percent": 77.41393786733838
+    },
+    {
+      "digit": 3,
+      "total": 1226,
+      "correct": 1188,
+      "recall_percent": 96.90048939641109
+    },
+    {
+      "digit": 4,
+      "total": 1168,
+      "correct": 1088,
+      "recall_percent": 93.15068493150685
+    },
+    {
+      "digit": 5,
+      "total": 1084,
+      "correct": 1008,
+      "recall_percent": 92.98892988929889
+    },
+    {
+      "digit": 6,
+      "total": 1183,
+      "correct": 1109,
+      "recall_percent": 93.7447168216399
+    },
+    {
+      "digit": 7,
+      "total": 1253,
+      "correct": 1180,
+      "recall_percent": 94.17398244213886
+    },
+    {
+      "digit": 8,
+      "total": 1170,
+      "correct": 952,
+      "recall_percent": 81.36752136752136
+    },
+    {
+      "digit": 9,
+      "total": 1189,
+      "correct": 964,
+      "recall_percent": 81.07653490328006
+    }
+  ]
+}

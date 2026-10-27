@@ -1,6 +1,4 @@
-"""
-Dashboard for residual projection on a photon-cube
-"""
+
 import json
 from pathlib import Path
 

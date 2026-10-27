@@ -16,7 +16,7 @@ data:
   val:
     h5_file_path: ${data.folder}/test.h5
   test:
-    h5_file_path: ${data.folder}/test.h5
+    h5_file_path: ${data.folder}/sim_test_2560_mlux.h5
   num_workers: 4
   batch_size: 1
   num_frames: 64
@@ -24,7 +24,7 @@ data:
 exp_name: training_run/${model.name}
 num_epoch: 10
 gradient_accumulation_steps: 1
-git_sha: 80314c938a2b6604b1f1e83d5413534cc18b2e0c
+git_sha: 91fa7cf746965dc21bb9fb1d5391bc907a3e7691
 loss:
   name: l1_loss
 logging:

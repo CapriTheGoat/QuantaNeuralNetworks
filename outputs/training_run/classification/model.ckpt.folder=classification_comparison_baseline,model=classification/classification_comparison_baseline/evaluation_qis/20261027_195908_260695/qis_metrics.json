@@ -1,0 +1,197 @@
+{
+  "model": "QIS QNN",
+  "checkpoint": "/home/riccardo/Desktop/QuantaNeuralNetworks/QuantaNeuralNetworks/outputs/training_run/classification/model.ckpt.folder=classification_comparison_baseline,model=classification/classification_comparison_baseline/checkpoint.pth",
+  "prediction_scope": "one returned prediction per recording",
+  "total_samples": 10000,
+  "correct_predictions": 1385,
+  "accuracy_percent": 13.85,
+  "mean_cross_entropy": 9.060831107159936,
+  "confusion_matrix": [
+    [
+      0,
+      430,
+      0,
+      0,
+      530,
+      0,
+      0,
+      20,
+      0,
+      0
+    ],
+    [
+      0,
+      1131,
+      0,
+      0,
+      4,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      743,
+      0,
+      0,
+      286,
+      0,
+      0,
+      3,
+      0,
+      0
+    ],
+    [
+      0,
+      784,
+      0,
+      0,
+      195,
+      0,
+      0,
+      31,
+      0,
+      0
+    ],
+    [
+      0,
+      843,
+      0,
+      0,
+      139,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      775,
+      0,
+      0,
+      103,
+      0,
+      0,
+      14,
+      0,
+      0
+    ],
+    [
+      0,
+      686,
+      0,
+      0,
+      272,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      896,
+      0,
+      0,
+      18,
+      0,
+      0,
+      114,
+      0,
+      0
+    ],
+    [
+      0,
+      576,
+      0,
+      0,
+      361,
+      0,
+      0,
+      36,
+      1,
+      0
+    ],
+    [
+      0,
+      869,
+      0,
+      0,
+      74,
+      0,
+      0,
+      66,
+      0,
+      0
+    ]
+  ],
+  "confusion_matrix_axes": {
+    "rows": "true",
+    "columns": "predicted"
+  },
+  "per_digit": [
+    {
+      "digit": 0,
+      "total": 980,
+      "correct": 0,
+      "recall_percent": 0.0
+    },
+    {
+      "digit": 1,
+      "total": 1135,
+      "correct": 1131,
+      "recall_percent": 99.64757709251101
+    },
+    {
+      "digit": 2,
+      "total": 1032,
+      "correct": 0,
+      "recall_percent": 0.0
+    },
+    {
+      "digit": 3,
+      "total": 1010,
+      "correct": 0,
+      "recall_percent": 0.0
+    },
+    {
+      "digit": 4,
+      "total": 982,
+      "correct": 139,
+      "recall_percent": 14.15478615071283
+    },
+    {
+      "digit": 5,
+      "total": 892,
+      "correct": 0,
+      "recall_percent": 0.0
+    },
+    {
+      "digit": 6,
+      "total": 958,
+      "correct": 0,
+      "recall_percent": 0.0
+    },
+    {
+      "digit": 7,
+      "total": 1028,
+      "correct": 114,
+      "recall_percent": 11.089494163424124
+    },
+    {
+      "digit": 8,
+      "total": 974,
+      "correct": 1,
+      "recall_percent": 0.1026694045174538
+    },
+    {
+      "digit": 9,
+      "total": 1009,
+      "correct": 0,
+      "recall_percent": 0.0
+    }
+  ]
+}

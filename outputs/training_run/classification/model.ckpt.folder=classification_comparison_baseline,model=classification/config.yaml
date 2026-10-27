@@ -11,7 +11,7 @@ model:
 data:
   name: spad_mnist
   train:
-    photon_cube_location: ${data.folder}/train_unpacked_640/sim_train_640_mlux/
+    photon_cube_location: ${data.folder}/train_unpacked/sim_train_2560_mlux/
     intensity_location: ${data.folder}/train_linear/
     crop_size:
     - 28
@@ -21,14 +21,14 @@ data:
     max_time_step: ${data.max_time_step}
     oversampling: 1
   val:
-    photon_cube_location: ${data.folder}/train_unpacked_val_640/sim_train_640_mlux/
+    photon_cube_location: ${data.folder}/train_unpacked_val/sim_train_2560_mlux/
     intensity_location: ${data.folder}/train_linear_val/
     intensity_fps: ${data.intensity_fps}
     photon_cube_fps: ${data.photon_cube_fps}
     max_time_step: ${data.max_time_step}
     oversampling: 1
   test:
-    photon_cube_location: ${data.folder}/test_unpacked_640/sim_test_640_mlux/
+    photon_cube_location: ${data.folder}/test_unpacked/sim_test_2560_mlux/
     intensity_location: ${data.folder}/test_linear/
     intensity_fps: ${data.intensity_fps}
     photon_cube_fps: ${data.photon_cube_fps}
@@ -45,7 +45,7 @@ data:
 exp_name: training_run/${model.name}
 num_epoch: 32
 gradient_accumulation_steps: 1
-git_sha: a4e6deff3faabf1f01e40b5b6afc8034ad57300f
+git_sha: 91fa7cf746965dc21bb9fb1d5391bc907a3e7691
 loss:
   name: l1_loss
 logging:

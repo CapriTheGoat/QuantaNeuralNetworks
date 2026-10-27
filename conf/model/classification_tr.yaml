@@ -1,6 +1,7 @@
 name: classification_tr
 parallel_mode: true # use if available
 kwargs:
+  normalize: true
   subsampling: 20
   bocpd_gamma: 1e-2
 ckpt:
