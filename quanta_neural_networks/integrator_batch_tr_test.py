@@ -228,6 +228,10 @@ class PerPixelBayesian(nn.Module):
                 )
             )
 
+            # undo comment to switch to arithmetic mean
+
+            #estimated_run_length = (self.forecaster_distribution * run_lengths).sum(dim=-1)
+
             if self.min_filter_size > 1:
                 estimated_run_length = self.min_pool2d(
                     estimated_run_length, self.min_filter_size
@@ -236,6 +240,11 @@ class PerPixelBayesian(nn.Module):
             run_time = (
                 estimated_run_length * time_per_frame
             ).clamp(min=1e-6)
+
+            #fixed_tau_bins = 1
+            #run_time = torch.full_like(
+            #    estimated_run_length, fixed_tau_bins * time_per_frame
+            #).clamp_min(1e-6)
 
             # Process each photon stored in this bin.
             bin_index = bin_indices[t_index]

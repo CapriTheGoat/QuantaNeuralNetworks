@@ -142,6 +142,7 @@ def camera_stream(
     num_raw_bins=100,
     exposure=1e-3,
     wall_start=None,
+    crop_mode="none",
 ):
     """
     Present successive dataset samples as a continuous camera stream.
@@ -192,6 +193,34 @@ def camera_stream(
             )
 
         events[:, 2] = timestamps.clamp(0.0, exposure)
+
+        if crop_mode not in ("none", "static", "shift"):
+            raise ValueError(f"Unknown crop_mode: {crop_mode!r}")
+
+        if crop_mode != "none":
+            # Input columns are (y, x, t). Your converter uses 1-based coordinates.
+            y, x, t = events.unbind(dim=1)
+
+            # Static: use the top-left crop for the entire recording.
+            # Shift: move the crop origin by 4 pixels halfway through.
+            if crop_mode == "shift":
+                origin = 4 * (t >= exposure / 2).to(events.dtype)
+            else:
+                origin = torch.zeros_like(t)
+
+            # First crop:  source coordinates 1..24 -> output 1..24.
+            # Second crop: source coordinates 5..28 -> output 1..24.
+            out_y = y - origin
+            out_x = x - origin
+            keep = (
+                (out_y >= 1) & (out_y <= 24)
+                & (out_x >= 1) & (out_x <= 24)
+            )
+
+            events = torch.stack(
+                (out_y[keep], out_x[keep], t[keep]), dim=1
+            )
+
         events = events[
             torch.argsort(events[:, 2], stable=True)
         ]
@@ -521,6 +550,10 @@ def main (cfg):
     exposure = 1e-3
     packet_bins = int(model.subsampling)
 
+    n_readouts = num_raw_bins // packet_bins
+    correct_at = np.zeros(n_readouts, dtype=np.int64)
+    total_at = np.zeros(n_readouts, dtype=np.int64)
+
     first_packet_of_recording = True
 
     correct_readouts = 0
@@ -531,12 +564,15 @@ def main (cfg):
     pace_replay = True
     wall_start = time.perf_counter()
 
+    crop_mode = "none"
+
     stream = camera_stream(
         test_dataloader,
         packet_bins=packet_bins,
         num_raw_bins=num_raw_bins,
         exposure=exposure,
         wall_start=wall_start if pace_replay else None,
+        crop_mode=crop_mode,
     )
 
     with torch.no_grad(), tqdm(
@@ -585,6 +621,11 @@ def main (cfg):
             correct_readouts += correct
             total_readouts += target_label.numel()
 
+            # camera_time is the packet end time relative to this recording.
+            j = round(camera_time / (packet_bins * time_per_frame)) - 1
+            correct_at[j] += correct
+            total_at[j] += target_label.numel()
+
             # Display the first few live predictions.
             if total_readouts <= 10:
                 logger.info(
@@ -626,6 +667,15 @@ def main (cfg):
 
     final_accuracy = 100.0 * correct_predictions / total_samples
     mean_loss = total_loss / total_samples
+
+    print(f"\nAccuracy by readout | crop={crop_mode}")
+    for j in range(n_readouts):
+        end_ms = (j + 1) * packet_bins * exposure / num_raw_bins * 1e3
+        print(
+            f"{end_ms:.3f} ms: "
+            f"{100.0 * correct_at[j] / total_at[j]:.2f}% "
+            f"({correct_at[j]}/{total_at[j]})"
+        )
 
     print("\nFINAL RESULTS")
     print(f"Total samples tested: {total_samples}")
