@@ -231,6 +231,41 @@ def save_results(cm, mean_ce, output_dir, checkpoint_file):
     print(cm)
     print(f"\nResults saved to: {output_dir.resolve()}")
 
+def apply_qis_crop(photon_cube, crop_mode):
+    """Apply the same 24x24 crop used in the TR shift experiment."""
+    if crop_mode == "none":
+        return photon_cube
+
+    if crop_mode not in ("static", "shift"):
+        raise ValueError(f"Unknown crop_mode: {crop_mode!r}")
+
+    if photon_cube.ndim != 4 or photon_cube.shape[1:3] != (28, 28):
+        raise ValueError(
+            f"Expected [B, 28, 28, T], got {tuple(photon_cube.shape)}"
+        )
+
+    # Keep the original 28x28 network input. Pixels outside the
+    # 24x24 output window stay zero in both conditions.
+    out = torch.zeros_like(photon_cube)
+
+    if crop_mode == "static":
+        out[:, :24, :24, :] = photon_cube[:, :24, :24, :]
+        return out
+
+    n_frames = photon_cube.shape[-1]
+    if n_frames < 2:
+        raise ValueError("A midpoint shift requires at least two QIS frames.")
+
+    mid = n_frames // 2
+
+    # First half: top-left source crop, unchanged coordinates.
+    out[:, :24, :24, :mid] = photon_cube[:, :24, :24, :mid]
+
+    # Second half: bottom-right source crop, mapped to the SAME output area.
+    out[:, :24, :24, mid:] = photon_cube[:, 4:28, 4:28, mid:]
+
+    return out
+
 @hydra.main(
     config_path=f"../../conf",
     config_name=f"{Path(__file__).parent.name}_{Path(__file__).stem}",
@@ -241,6 +276,9 @@ def evaluate_full_dataset(cfg):
         "cuda" if torch.cuda.is_available() else "cpu"
     )
     print(f"Using device {device}")
+
+    crop_mode = "shift"
+    print(f"QIS evaluation crop mode: {crop_mode}")
 
     test_dataset = IntensityCubeSimulatedNPY(**cfg.data.test, load_intensity=False,)
 
@@ -292,7 +330,7 @@ def evaluate_full_dataset(cfg):
         dynamic_ncols=True,
     ) as pbar:
         for target_label, photon_cube, intensity_ll in test_dataloader:
-            photon_cube = photon_cube.to(device)
+            photon_cube = apply_qis_crop(photon_cube, crop_mode).to(device)
             target_label = target_label.to(
                 device=device,
                 dtype=torch.long,

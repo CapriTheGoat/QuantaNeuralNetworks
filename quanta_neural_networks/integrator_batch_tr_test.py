@@ -229,7 +229,6 @@ class PerPixelBayesian(nn.Module):
             )
 
             # undo comment to switch to arithmetic mean
-
             #estimated_run_length = (self.forecaster_distribution * run_lengths).sum(dim=-1)
 
             if self.min_filter_size > 1:
@@ -241,7 +240,9 @@ class PerPixelBayesian(nn.Module):
                 estimated_run_length * time_per_frame
             ).clamp(min=1e-6)
 
-            #fixed_tau_bins = 1
+
+            # undo comment to switch to fixed integration
+            #fixed_tau_bins = 100
             #run_time = torch.full_like(
             #    estimated_run_length, fixed_tau_bins * time_per_frame
             #).clamp_min(1e-6)
@@ -450,6 +451,7 @@ class PerPixelBayesian(nn.Module):
                 recons_ll = nearest_neighbor_inpaint(recons_ll, self.hot_pixel_mask)
 
             if not getattr(self, "_printed_readout_stats", False):
+                print(f"Effective bocpd_gamma={self.bocpd_gamma:g}")
                 print(
                 "TR readouts BEFORE clamp:",
                 f"min={recons_ll.min().item():.6g}",
@@ -461,6 +463,21 @@ class PerPixelBayesian(nn.Module):
             self._printed_readout_stats = True
 
             recons_ll = self.clamp_recons(recons_ll)
+
+            # Save the first recording's CNN readouts, then stop saving.
+            if not getattr(self, "_debug_done", False):
+                import matplotlib.pyplot as plt
+
+                end_us = round((self.t_absolute + self._t) * time_per_frame * 1e6)
+                if end_us in (400, 600, 800, 1000):
+                    plt.imsave(
+                        f"adaptive_{end_us}us.png",
+                        recons_ll[0, :, :, -1].detach().cpu().numpy(),
+                        cmap="gray", vmin=0, vmax=1,
+                    )
+                if end_us == 1000:
+                    self._debug_done = True
+
             self.t_absolute += self._t
 
             return recons_ll

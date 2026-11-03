@@ -15,7 +15,7 @@ val:
   max_time_step: ${data.max_time_step}
   oversampling: 1
 test:
-  photon_cube_location: ${data.folder}/test_unpacked_160/sim_test_160_mlux/
+  photon_cube_location: ${data.folder}/test_unpacked_640/sim_test_640_mlux/
   intensity_location: ${data.folder}/test_linear/
   intensity_fps: ${data.intensity_fps}
   photon_cube_fps: ${data.photon_cube_fps}

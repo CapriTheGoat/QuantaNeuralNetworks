@@ -533,7 +533,12 @@ def main (cfg):
     # Your training script saves model weights under the "model" key.
     model.load_state_dict(checkpoint["model"], strict=True)
     model.eval()
-
+    print(
+        "Integrator settings:",
+        f"normalize={model.integrator.normalize},",
+        f"quantile={model.integrator.quantile},",
+        f"subsampling={model.subsampling}",
+    )
     del checkpoint
 
     logger.info(f"Loaded checkpoint: {ckpt_path}")
@@ -564,7 +569,7 @@ def main (cfg):
     pace_replay = True
     wall_start = time.perf_counter()
 
-    crop_mode = "none"
+    crop_mode = "shift"
 
     stream = camera_stream(
         test_dataloader,
